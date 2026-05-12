@@ -1,0 +1,102 @@
+# ============================================================
+# Dependencies
+# ============================================================
+node_modules/
+.pnp
+.pnp.js
+.pnp.cjs
+.pnp.loader.mjs
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# ============================================================
+# Next.js
+# ============================================================
+.next/
+out/
+build/
+dist/
+next-env.d.ts
+
+# ============================================================
+# Production / deploy
+# ============================================================
+.vercel
+.netlify
+
+# ============================================================
+# Environment — never commit secrets
+# Allow only the template file
+# ============================================================
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+.env.*.local
+!.env.example
+
+# ============================================================
+# Logs
+# ============================================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm
+.eslintcache
+.stylelintcache
+
+# ============================================================
+# TypeScript
+# ============================================================
+*.tsbuildinfo
+
+# ============================================================
+# Prisma — local sqlite, migration locks, etc.
+# Migrations themselves ARE committed (they live in prisma/migrations/).
+# ============================================================
+prisma/*.db
+prisma/*.db-journal
+prisma/migrations/migration_lock.toml.bak
+
+# ============================================================
+# Test + coverage output
+# ============================================================
+coverage/
+.nyc_output/
+.vitest-cache/
+
+# ============================================================
+# Editors / IDEs
+# ============================================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ============================================================
+# OS
+# ============================================================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ============================================================
+# Claude Code local state (per-machine agent transcripts, plans, etc.)
+# ============================================================
+.claude/
+
+# ============================================================
+# Miscellaneous
+# ============================================================
+*.local
+tmp/
+.tmp/

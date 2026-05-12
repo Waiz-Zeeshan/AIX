@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aix-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aix
+      POSTGRES_PASSWORD: aix
+      POSTGRES_DB: ai_unlimited
+    ports:
+      - "5432:5432"
+    volumes:
+      - aix-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aix -d ai_unlimited"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  aix-pgdata:

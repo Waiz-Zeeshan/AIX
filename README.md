@@ -1,1 +1,211 @@
-# AIX
+# Tkxel AI Unlimited — Team Formation Platform
+
+Web platform that runs the team-formation process for Tkxel's AI Unlimited Event. Collects ranked preferences from three participant tiers (Orchestrators, Pod Heads, Agents), runs a stable-matching algorithm, and outputs final team assignments + project allocations.
+
+Spec: [`SRS-Tkxel-AI-Unlimited-v1.1.md`](./SRS-Tkxel-AI-Unlimited-v1.1.md). High-level orientation for future contributors: [`CLAUDE.md`](./CLAUDE.md).
+
+---
+
+## Stack
+
+- **Next.js 15** (App Router, RSC + Server Actions)
+- **React 19**, **TypeScript** strict
+- **Prisma** + **PostgreSQL 16+**
+- **NextAuth.js v5** (Google OAuth, restricted to allowed email domains)
+- **Tailwind CSS v4**
+- **Zod** for input validation
+- **Vitest** for unit + integration tests
+
+## Quick start
+
+Requires Node 20+, Docker, and npm.
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Start the local Postgres container
+docker compose up -d
+
+# 3. Configure environment
+cp .env.example .env.local
+# Edit .env.local — at minimum set ADMIN_EMAILS to your email.
+
+# 4. Apply migrations + seed the database
+npx prisma migrate dev          # creates tables
+npm run db:seed                 # 5 Orchs, 60 Pod Heads, 600 Agents, 12 Projects
+
+# 5. Start the dev server
+npm run dev                     # http://localhost:3000
+```
+
+In development, a **dev-only credentials provider** is available on `/signin` so you can log in by email without setting up Google OAuth. The email must already exist in the User table (admin pre-imports users via CSV).
+
+### Promoting an admin
+
+```bash
+npx tsx scripts/grant-admin.ts
+```
+
+Reads `ADMIN_EMAILS` from `.env.local` and creates / promotes those users.
+
+### Running the full match pipeline locally
+
+After seeding:
+
+```bash
+npx tsx scripts/finalize-all.ts
+```
+
+Runs all three matching passes against the seeded data and finalizes each. Useful for testing the results UI.
+
+## Environment variables
+
+See [`.env.example`](./.env.example). Critical ones:
+
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | Postgres connection string |
+| `NEXTAUTH_URL` | Public origin (e.g. `https://ai-unlimited.tkxel.com`) |
+| `NEXTAUTH_SECRET` | `openssl rand -base64 32` for prod |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | OAuth credentials |
+| `ADMIN_EMAILS` | Comma-separated emails promoted to admin on first sign-in |
+
+Allowed sign-in domains are stored in `EventConfig.allowedEmailDomains` (DB-managed via `/admin/config`, not env).
+
+## Scripts
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Next.js dev server |
+| `npm run build` | Production build |
+| `npm run start` | Run the production build |
+| `npm run lint` | ESLint (next/core-web-vitals) |
+| `npm run typecheck` | `tsc --noEmit` strict |
+| `npm test` | Vitest run-once |
+| `npm run test:watch` | Vitest watch mode |
+| `npm run db:migrate` | `prisma migrate dev` |
+| `npm run db:generate` | `prisma generate` |
+| `npm run db:seed` | Seed deterministic test data |
+| `npm run db:studio` | Open Prisma Studio at localhost:5555 |
+
+## Project structure
+
+```
+/
+├── prisma/
+│   ├── schema.prisma            # SRS §4.2 schema
+│   ├── migrations/
+│   └── seed.ts
+├── scripts/
+│   ├── grant-admin.ts
+│   └── finalize-all.ts
+├── src/
+│   ├── app/                     # Next.js App Router
+│   │   ├── (auth)/signin/
+│   │   ├── admin/               # admin shell + sub-pages
+│   │   ├── agent/ orch/ pod-head/
+│   │   ├── profile-setup/
+│   │   ├── api/
+│   │   │   ├── auth/[...nextauth]/
+│   │   │   └── my-assignment/
+│   │   ├── error.tsx not-found.tsx global-error.tsx
+│   │   └── page.tsx layout.tsx
+│   ├── components/              # DragRankList, PitchCard, TransparencyBadge, PageSkeleton
+│   ├── lib/
+│   │   ├── auth-helpers.ts
+│   │   ├── audit.ts
+│   │   ├── config.ts
+│   │   ├── csv.ts
+│   │   ├── db.ts
+│   │   ├── matching/            # pure-TS Hospital-Residents engine (no Prisma)
+│   │   ├── matching-service.ts  # DB ↔ engine bridge
+│   │   ├── permissions.ts
+│   │   ├── preferences-actions.ts
+│   │   └── results.ts
+│   ├── auth.ts                  # NextAuth v5 config
+│   └── middleware.ts
+└── tests/
+    ├── auth/
+    ├── components/
+    └── matching/                # incl. integration tests against real DB
+```
+
+## Tests
+
+```bash
+npm test
+```
+
+Coverage today (~60 tests across 9 files):
+
+- **Pure matching engine** (`src/lib/matching/`): 29 unit tests covering SRS §14.2 cases 1–6 + 9.
+- **Matching integration** against the seeded DB: 4 tests + 5 service-layer tests (full pipeline incl. SRS §14.2 cases 7 + 8).
+- **CSV parser** (`src/lib/csv.ts`): 10 tests covering BOM, CRLF, quoted commas, escaped quotes.
+- **Auth**: 5 tests for the domain + user-existence + admin-bootstrap logic.
+- **DragRankList**: 6 tests for the reorder algorithm.
+
+Integration tests skip automatically when `DATABASE_URL` is unset.
+
+## Architecture notes
+
+### Matching engine
+
+- Pure TypeScript, zero Prisma imports, deterministic. Lives in `src/lib/matching/`.
+- Hospital-Residents (Gale-Shapley many-to-one) resident-proposing variant.
+- Completion pass guarantees 100% coverage even with stragglers.
+- Auto-fill (`auto-fill.ts`) generates seeded-deterministic preferences for non-submitters.
+- Project assignment uses FCFS + caps + balancing (`preferencesSubmittedAt ASC NULLS LAST`).
+- See [SRS §7](./SRS-Tkxel-AI-Unlimited-v1.1.md) for the algorithm spec.
+
+### Database bridge
+
+`src/lib/matching-service.ts` translates between the pure engine and Prisma. On finalize, draft `MatchingRun.stats.placements` JSON is applied to entity columns (`PodHeadProfile.assignedOrchId`, `AgentProfile.assignedPodHeadId`, `PodHeadProjectPick.assigned`).
+
+### Auth + permissions
+
+NextAuth v5 with JWT sessions. Domain check in `signIn` callback against `EventConfig.allowedEmailDomains`. `lib/permissions.ts` guards every protected page (`requireAuth`, `requireAdmin`, `requireRole`, `requirePhase`, `requireParticipant`).
+
+### Phase state machine
+
+`EventPhase` rows control what's allowed. Admin controls open/close via `/admin/phases`. Phases progress sequentially: `REGISTRATION → PREFERENCES → MATCHING → RESULTS_PUBLISHED`.
+
+### Audit log
+
+Every admin mutation calls `logAudit({ actorId, action, target?, details? })` from `src/lib/audit.ts`. Read view at `/admin/audit` with filter + CSV export.
+
+## Deployment
+
+### Vercel
+
+1. Provision a managed Postgres (Neon, Supabase, or RDS). Copy the connection string to `DATABASE_URL`.
+2. Set env vars in the Vercel project: `DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ADMIN_EMAILS`.
+3. **Set up a build hook to run migrations:** the safest pattern is to run `npx prisma migrate deploy` in a `vercel-build` script (it should NOT run `prisma migrate dev`, which is a development command).
+4. Add the OAuth redirect URI to your Google Cloud Console OAuth client: `https://<your-domain>/api/auth/callback/google`.
+5. Restrict the Google OAuth consent screen to **Internal** for a Tkxel Workspace org so only `tkxel.com` (and configured subdomain) accounts can authenticate.
+
+### First-time admin setup on prod
+
+1. Deploy with `ADMIN_EMAILS` set to the chief organizer.
+2. On first sign-in, that user is auto-promoted to `isAdmin=true`.
+3. From `/admin/users`, CSV-import the remaining participants.
+4. From `/admin/projects`, define the 12 projects.
+5. Move REGISTRATION → CLOSED via `/admin/phases`, open PREFERENCES.
+
+## Build phase log
+
+Per SRS §19, the project shipped in nine phases:
+
+1. **Foundation** — Next.js scaffold, Prisma schema, seed
+2. **Matching engine** — pure-TS Hospital-Residents + completion + project + auto-fill
+3. **Auth + permissions** — NextAuth v5, domain check, role guards
+4. **Profile setup + phase control** — `/profile-setup`, `/admin/phases`, `/admin/config`
+5. **Admin core** — CSV import, project CRUD, progress monitoring, audit log
+6. **Participant preference UIs** — DragRankList, PitchCard, three role flows
+7. **Matching integration** — DB bridge, admin runs/finalize/rollback
+8. **Results + transparency** — `/api/my-assignment`, per-role results views
+9. **Polish** — error/404/500 pages, loading states, this README
+
+## License
+
+Internal Tkxel project.
