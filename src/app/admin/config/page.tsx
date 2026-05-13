@@ -49,7 +49,9 @@ export default async function AdminConfigPage() {
           podHeadRanksTopNAgents: config.podHeadRanksTopNAgents,
           pitchMinChars: config.pitchMinChars,
           pitchMaxChars: config.pitchMaxChars,
-          allowedEmailDomains: config.allowedEmailDomains
+          allowedEmailDomains: config.allowedEmailDomains,
+          agentSyncSheetId: config.agentSyncSheetId ?? "",
+          podHeadSyncSheetId: config.podHeadSyncSheetId ?? ""
         }}
         locked={locked}
       />

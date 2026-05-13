@@ -76,7 +76,7 @@ async function orchToPodHeadRank(
 }
 
 /** Project pick dispositions from the latest finalized PROJECT_ASSIGNMENT run. */
-async function getProjectDispositions(
+export async function getProjectDispositions(
   podHeadId: string
 ): Promise<Map<string, "PRIMARY_HONORED" | "SECONDARY_HONORED" | "FELL_BACK_TO_BALANCE">> {
   const run = await db.matchingRun.findFirst({

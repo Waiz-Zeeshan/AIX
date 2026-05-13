@@ -49,7 +49,17 @@ const baseSchema = z.object({
             .regex(DOMAIN_PATTERN, "Invalid domain shape")
         )
         .min(1, "At least one allowed domain is required")
-    )
+    ),
+  agentSyncSheetId: z
+    .string()
+    .transform((s) => s.trim())
+    .transform((s) => (s.length === 0 ? null : s))
+    .nullable(),
+  podHeadSyncSheetId: z
+    .string()
+    .transform((s) => s.trim())
+    .transform((s) => (s.length === 0 ? null : s))
+    .nullable()
 });
 
 const configSchema = baseSchema.refine(
@@ -79,7 +89,9 @@ const EDITABLE_FIELDS = [
   "podHeadRanksTopNAgents",
   "pitchMinChars",
   "pitchMaxChars",
-  "allowedEmailDomains"
+  "allowedEmailDomains",
+  "agentSyncSheetId",
+  "podHeadSyncSheetId"
 ] as const;
 
 export async function saveConfig(

@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:1.6
+# Development image: full deps, source bind-mounted from host, Next.js dev server with HMR.
+
+FROM node:20-alpine
+RUN apk add --no-cache libc6-compat openssl
+WORKDIR /app
+
+ENV NODE_ENV=development
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Install deps first so layer is cached when only source changes.
+# Source is bind-mounted at runtime via docker-compose; node_modules lives in
+# an anonymous volume so the host's copy doesn't shadow this layer.
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Pre-copy prisma schema so prisma generate has something to run against.
+# (At runtime the host bind mount supersedes this, but the generated client
+# under node_modules survives because it's on the anonymous volume.)
+COPY prisma ./prisma
+RUN npx prisma generate
+
+EXPOSE 3000
+
+# `migrate deploy` is non-interactive and safe to re-run.
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run dev -- -H 0.0.0.0 -p 3000"]

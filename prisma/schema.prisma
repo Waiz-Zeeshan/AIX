@@ -26,6 +26,8 @@ model EventConfig {
   pitchMinChars          Int      @default(50)
   pitchMaxChars          Int      @default(500)
   allowedEmailDomains    String[] @default(["tkxel.com"])
+  agentSyncSheetId       String?
+  podHeadSyncSheetId     String?
   updatedAt              DateTime @updatedAt
 }
 
@@ -42,6 +44,8 @@ model User {
   email                  String    @unique
   name                   String
   image                  String?
+  phone                  String?
+  empId                  String?   @unique
   role                   Role      @default(AGENT)
   isAdmin                Boolean   @default(false)
   profileCompletedAt     DateTime?
@@ -72,12 +76,13 @@ model OrchProfile {
 }
 
 model PodHeadProfile {
-  id     String   @id @default(cuid())
-  userId String   @unique
-  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bio    String?
-  skills String[]
-  pitch  String
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio        String?
+  skills     String[]
+  pitch      String
+  department String?
 
   // Outgoing preferences
   orchRankings    PodHeadOrchRanking[]
@@ -94,12 +99,13 @@ model PodHeadProfile {
 }
 
 model AgentProfile {
-  id     String   @id @default(cuid())
-  userId String   @unique
-  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bio    String?
-  skills String[]
-  pitch  String
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio              String?
+  skills           String[]
+  pitch            String
+  preferredDomains String[]
 
   podHeadRankings    AgentPodHeadRanking[]
   selectedByPodHeads PodHeadAgentSelection[]
