@@ -81,6 +81,42 @@ describe("splitNameAndEmpId", () => {
       empId: null
     });
   });
+
+  it("accepts dashes with no surrounding spaces", () => {
+    expect(splitNameAndEmpId("Hafiz Muhammad Umair-1676")).toEqual({
+      name: "Hafiz Muhammad Umair",
+      empId: "1676"
+    });
+  });
+
+  it("accepts dashes with space on only one side", () => {
+    expect(splitNameAndEmpId("Hafiz -1676")).toEqual({
+      name: "Hafiz",
+      empId: "1676"
+    });
+    expect(splitNameAndEmpId("Hafiz- 1676")).toEqual({
+      name: "Hafiz",
+      empId: "1676"
+    });
+  });
+
+  it("accepts Unicode dash variants (hyphen / nb-hyphen / minus sign)", () => {
+    // U+2010 Unicode hyphen
+    expect(splitNameAndEmpId("Foo Bar ‐ 99")).toEqual({
+      name: "Foo Bar",
+      empId: "99"
+    });
+    // U+2011 non-breaking hyphen
+    expect(splitNameAndEmpId("Foo Bar‑1234")).toEqual({
+      name: "Foo Bar",
+      empId: "1234"
+    });
+    // U+2212 minus sign (Google Sheets sometimes substitutes this)
+    expect(splitNameAndEmpId("Foo Bar − 42")).toEqual({
+      name: "Foo Bar",
+      empId: "42"
+    });
+  });
 });
 
 describe("planPodHeadSync — header detection", () => {
