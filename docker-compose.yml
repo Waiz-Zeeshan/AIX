@@ -17,5 +17,51 @@ services:
       timeout: 3s
       retries: 20
 
+  # ---- Development: hot-reload Next.js, source bind-mounted from host ----
+  # Run with:  docker compose --profile dev up --build
+  app-dev:
+    profiles: ["dev"]
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: aix-app-dev
+    restart: unless-stopped
+    ports:
+      - "3005:3000"
+    environment:
+      DATABASE_URL: postgresql://aix:aix@postgres:5432/ai_unlimited?schema=public
+      NEXTAUTH_URL: http://localhost:3005
+      NODE_ENV: development
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ---- Production: built standalone image, no host mounts ----
+  # Run with:  docker compose --profile prod up --build -d
+  app:
+    profiles: ["prod"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aix-app:latest
+    container_name: aix-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://aix:aix@postgres:5432/ai_unlimited?schema=public
+      NODE_ENV: production
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   aix-pgdata:

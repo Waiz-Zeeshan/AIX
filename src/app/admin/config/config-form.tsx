@@ -18,6 +18,8 @@ type ConfigDefaults = {
   pitchMinChars: number;
   pitchMaxChars: number;
   allowedEmailDomains: string[];
+  agentSyncSheetId: string;
+  podHeadSyncSheetId: string;
 };
 
 const initialState: ConfigFormState = { status: "idle" };
@@ -161,6 +163,73 @@ export function ConfigForm({
           {state.fieldErrors?.allowedEmailDomains && (
             <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
               {state.fieldErrors.allowedEmailDomains}
+            </p>
+          )}
+        </div>
+      </Group>
+
+      <Group title="Integrations">
+        <div className="sm:col-span-2">
+          <label
+            htmlFor="agentSyncSheetId"
+            className="block text-sm font-medium"
+          >
+            Agent sync — Google Sheet
+          </label>
+          <p className="mt-1 text-xs text-zinc-500">
+            Sheet ID, <code className="font-mono">id/range</code> (e.g.{" "}
+            <code className="font-mono">1AbC.../Agents!A1:N700</code>), or full
+            Google Sheets URL. Used by{" "}
+            <a className="underline" href="/admin/agent-sync">
+              /admin/agent-sync
+            </a>
+            . Leave blank to disable.
+          </p>
+          <input
+            type="text"
+            id="agentSyncSheetId"
+            name="agentSyncSheetId"
+            defaultValue={defaults.agentSyncSheetId}
+            disabled={locked}
+            placeholder="1AbC.../Agents!A1:N700"
+            className="mt-2 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 font-mono text-xs shadow-sm focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 disabled:bg-zinc-100 disabled:text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:disabled:bg-zinc-900"
+          />
+          {state.fieldErrors?.agentSyncSheetId && (
+            <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+              {state.fieldErrors.agentSyncSheetId}
+            </p>
+          )}
+        </div>
+        <div className="sm:col-span-2">
+          <label
+            htmlFor="podHeadSyncSheetId"
+            className="block text-sm font-medium"
+          >
+            Pod Head sync — Google Sheet
+          </label>
+          <p className="mt-1 text-xs text-zinc-500">
+            Used by{" "}
+            <a className="underline" href="/admin/pod-head-sync">
+              /admin/pod-head-sync
+            </a>
+            . Expected columns:{" "}
+            <code className="font-mono">
+              POD Heads Emails | Name with EMP ID | Phone Number | Department
+            </code>
+            . Leave blank to disable.
+          </p>
+          <input
+            type="text"
+            id="podHeadSyncSheetId"
+            name="podHeadSyncSheetId"
+            defaultValue={defaults.podHeadSyncSheetId}
+            disabled={locked}
+            placeholder="1AbC.../PodHeads!A1:F100"
+            className="mt-2 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 font-mono text-xs shadow-sm focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 disabled:bg-zinc-100 disabled:text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:disabled:bg-zinc-900"
+          />
+          {state.fieldErrors?.podHeadSyncSheetId && (
+            <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+              {state.fieldErrors.podHeadSyncSheetId}
             </p>
           )}
         </div>
