@@ -23,34 +23,37 @@ export function nameFromEmail(email: string): string {
 }
 
 /**
- * Split a "Full Name - 1234" cell into name + EMP ID. If there's no trailing
- * `<dash><digits>` suffix, the whole cell is the name and `empId` is null. A
- * dangling trailing dash without digits (e.g. "Foo Bar -") is stripped so
- * lookups by name still succeed.
+ * Split a "Full Name - 1234" cell into name + EMP ID. If there's no
+ * `<dash>...<digits>` pattern anywhere, the whole cell is the name and
+ * `empId` is null. A dangling trailing dash with no digits (e.g. "Foo Bar -")
+ * is stripped so lookups by name still succeed.
  *
- * Tolerant on spacing — sheet operators frequently type `"Name -1234"`,
- * `"Name- 1234"`, or `"Name-1234"`. All of those are equivalent.
+ * Loose by design — real sheets accumulate trailing junk after the empId
+ * (department names, comments, stray spaces). The regex:
+ *   - greedy first group (so the LAST dash-before-digits wins — internal-dash
+ *     names like "Smith-Jones-1234" parse as name="Smith-Jones", empId="1234")
+ *   - allows any non-digit characters between the dash and the digit run
+ *   - is NOT anchored at the end — anything after the digits is ignored
  *
- * Tolerant on dash character — ASCII hyphen `-`, en-dash `–`, em-dash `—`,
- * Unicode hyphen `‐` (U+2010), non-breaking hyphen `‑` (U+2011), and minus
- * sign `−` (U+2212) all accepted. Google Sheets and Excel autocorrect
- * sometimes substitute these silently.
+ * Tolerant on spacing AND on dash character (ASCII hyphen, en-dash, em-dash,
+ * Unicode hyphen U+2010, non-breaking hyphen U+2011, minus sign U+2212, etc.)
+ * since Google Sheets / Excel autocorrect sometimes substitutes silently.
  *
- *   "Abdullah Ameer Aftab - 2499" → { name: "Abdullah Ameer Aftab", empId: "2499" }
- *   "Hafiz Muhammad Umair-1676"   → { name: "Hafiz Muhammad Umair", empId: "1676" }
- *   "Hafiz -1676"                 → { name: "Hafiz",                empId: "1676" }
- *   "Hafiz- 1676"                 → { name: "Hafiz",                empId: "1676" }
- *   "Just A Name"                 → { name: "Just A Name",          empId: null }
- *   "Foo Bar – 99" (en-dash)      → { name: "Foo Bar",              empId: "99" }
- *   "Foo Bar -"                   → { name: "Foo Bar",              empId: null }
- *
- * Edge: an internal-dash name like "Smith-Jones" parses as `name="Smith"`,
- * `empId="Jones"`... except `empId` only matches digits, so "Smith-Jones"
- * fails the empId regex and falls back to `{ name: "Smith-Jones", empId: null }`.
- * Real internal-dash names with no digit suffix are safe.
+ *   "Abdullah Ameer Aftab - 2499"               → { name: "Abdullah Ameer Aftab", empId: "2499" }
+ *   "Hafiz Muhammad Umair-1676"                 → { name: "Hafiz Muhammad Umair", empId: "1676" }
+ *   "Hafiz - 1676 (Engineering)"                → { name: "Hafiz",                empId: "1676" }
+ *   "Hafiz - 1676 / TKXEL Pakistan"             → { name: "Hafiz",                empId: "1676" }
+ *   "Smith-Jones - 1234"                        → { name: "Smith-Jones",          empId: "1234" }
+ *   "Just A Name"                               → { name: "Just A Name",          empId: null }
+ *   "Foo Bar – 99" (en-dash)                    → { name: "Foo Bar",              empId: "99" }
+ *   "Foo Bar -"                                 → { name: "Foo Bar",              empId: null }
+ *   "Smith-Jones" (no digits)                   → { name: "Smith-Jones",          empId: null }
  */
 const DASH_CHARS = "-\\u2010\\u2011\\u2012\\u2013\\u2014\\u2015\\u2212";
-const NAME_EMPID_RE = new RegExp(`^(.+?)\\s*[${DASH_CHARS}]\\s*(\\d+)\\s*$`);
+// Greedy first group + any non-digits between dash and the digit run + no end
+// anchor. Regex engine backtracks to find the LAST dash followed (with non-digit
+// filler only) by a digit sequence — that preserves internal-dash names.
+const NAME_EMPID_RE = new RegExp(`^(.+)[${DASH_CHARS}][^\\d]*(\\d+)`);
 const TRAILING_DASH_RE = new RegExp(`\\s+[${DASH_CHARS}]\\s*$`);
 
 export function splitNameAndEmpId(cell: string): {
