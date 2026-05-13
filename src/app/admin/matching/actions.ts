@@ -25,18 +25,10 @@ import {
   rollbackMatch,
   runOrchPodHeadMatch,
   runPodHeadAgentMatch,
-  runProjectAssignment,
-  type RunSummary
+  runProjectAssignment
 } from "@/lib/matching-service";
 import { requireAdmin, requirePhase } from "@/lib/permissions";
-
-export type MatchingActionState = {
-  status: "idle" | "success" | "error";
-  message?: string;
-  summary?: RunSummary;
-};
-
-export const initialMatchingState: MatchingActionState = { status: "idle" };
+import type { MatchingActionState } from "./types";
 
 const matchTypeSchema = z.enum([
   "ORCH_PODHEAD",

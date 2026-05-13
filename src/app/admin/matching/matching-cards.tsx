@@ -6,13 +6,15 @@ import type { MatchType } from "@prisma/client";
 
 import {
   finalize,
-  initialMatchingState,
   rollback,
   runOrchPodHead,
   runPodHeadAgent,
-  runProjectAssign,
-  type MatchingActionState
+  runProjectAssign
 } from "./actions";
+import {
+  initialMatchingState,
+  type MatchingActionState
+} from "./types";
 import type { MatchingStatus } from "@/lib/matching-service";
 
 type StepStats = MatchingStatus[MatchType]["stats"];
