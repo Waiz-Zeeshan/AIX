@@ -69,14 +69,24 @@ export interface PodHeadPlanInput {
 // email column names so the planner stays useful across template tweaks.
 const RE_EMAIL =
   /\b(?:pod\s*heads?\s*emails?|official\s*email|email\s*address|^email$)\b/;
+// Matches "Name", "Name with EMP ID", "Employee Name", etc. Used for the NAME
+// portion. EMP ID is extracted separately (preferred from a standalone column;
+// fallback parses it out of this cell via splitNameAndEmpId).
 const RE_NAME_EMPID =
   /\bname\s*(?:with|and|\+)?\s*emp(?:\s*id)?\b|\bemployee\s*name\b|^name$/;
+// Matches standalone EMP ID column headers: "EMP ID", "Emp ID", "EmpID",
+// "Employee ID", "Employee Code", "Emp Number", "EMP #". Must NOT match
+// "Name with EMP ID" — that's a combined column handled via RE_NAME_EMPID.
+// The `^...$` anchors enforce that the header is purely about the empId.
+const RE_EMPID = /^(?:emp|employee)\s*(?:id|code|number|no|#)?$/;
 const RE_PHONE = /\bphone(?:\s*number)?\b|\bmobile\b/;
 const RE_DEPARTMENT = /\b(?:dept|departments?|division|team)\b/;
 
 interface HeaderIndex {
   email: number;
   nameEmpId: number;
+  /** Optional standalone EMP ID column. -1 if absent. */
+  empId: number;
   phone: number;
   department: number;
 }
@@ -90,6 +100,7 @@ function indexHeaders(headerRow: string[]): HeaderResult {
   const warnings: string[] = [];
   let email = -1;
   let nameEmpId = -1;
+  let empId = -1;
   let phone = -1;
   let department = -1;
 
@@ -113,6 +124,15 @@ function indexHeaders(headerRow: string[]): HeaderResult {
     if (RE_EMAIL.test(h)) {
       tryAssign("email", email, i, (idx) => {
         email = idx;
+      });
+      continue;
+    }
+    // Check RE_EMPID BEFORE RE_NAME_EMPID — the standalone EMP ID column
+    // shouldn't be mistaken for the name column (regexes are disjoint by
+    // construction, but order makes intent explicit).
+    if (RE_EMPID.test(h)) {
+      tryAssign("empId", empId, i, (idx) => {
+        empId = idx;
       });
       continue;
     }
@@ -141,11 +161,12 @@ function indexHeaders(headerRow: string[]): HeaderResult {
       `Missing email column (need "POD Heads Emails", "Official Email", or "Email Address").`
     );
   }
-  // Name + phone + department are optional at the header level — if missing,
-  // their cells just stay null on each row. Pod Head finishes via /profile-setup.
+  // Name + standalone empId + phone + department are all optional at the
+  // header level — if missing, their cells just stay null on each row. Pod
+  // Head finishes the rest via /profile-setup.
 
   return {
-    index: { email, nameEmpId, phone, department },
+    index: { email, nameEmpId, empId, phone, department },
     warnings
   };
 }
@@ -184,11 +205,19 @@ export function planPodHeadSync(input: PodHeadPlanInput): PodHeadSyncPlan {
 
     const rawEmail = cellAt(headers.email).trim();
     const rawNameCell = cellAt(headers.nameEmpId).trim();
+    const rawEmpIdCell = cellAt(headers.empId).trim();
     const rawPhone = cellAt(headers.phone).trim();
     const rawDepartment = cellAt(headers.department).trim();
 
     // Treat entirely-blank rows as no-ops (trailing rows in Sheets API).
-    if (!rawEmail && !rawNameCell && !rawPhone && !rawDepartment) continue;
+    if (
+      !rawEmail &&
+      !rawNameCell &&
+      !rawEmpIdCell &&
+      !rawPhone &&
+      !rawDepartment
+    )
+      continue;
 
     const email = rawEmail.toLowerCase();
 
@@ -232,10 +261,16 @@ export function planPodHeadSync(input: PodHeadPlanInput): PodHeadSyncPlan {
       continue;
     }
 
-    const { name: parsedName, empId } = rawNameCell
+    const { name: parsedName, empId: combinedEmpId } = rawNameCell
       ? splitNameAndEmpId(rawNameCell)
       : { name: "", empId: null };
     const name = parsedName || nameFromEmail(email);
+
+    // Prefer the standalone EMP ID column when present. Tolerate non-digit
+    // characters in the cell (e.g. "EMP-2499", "EMP 2499") by extracting the
+    // first digit run. Fall back to the empId parsed out of the combined cell.
+    const standaloneEmpId = rawEmpIdCell.match(/\d+/)?.[0] ?? null;
+    const empId = standaloneEmpId ?? combinedEmpId;
 
     if (empId) {
       if (seenEmpIdsInSheet.has(empId)) {
