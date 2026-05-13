@@ -2,12 +2,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Role } from "@prisma/client";
 
+import { PageHeader } from "@/components/chrome/PageHeader";
 import {
   PreferenceTree,
   type PreferenceBranchData,
   type PreferenceTreeNode
 } from "@/components/PreferenceTree";
 import { TransparencyBadge } from "@/components/TransparencyBadge";
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { getConfig } from "@/lib/config";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/permissions";
@@ -21,10 +25,10 @@ const ROLE_LABEL: Record<Role, string> = {
   AGENT: "Agent"
 };
 
-const ROLE_BADGE: Record<Role, string> = {
-  ORCH: "bg-violet-100 text-violet-900 dark:bg-violet-900 dark:text-violet-100",
-  POD_HEAD: "bg-sky-100 text-sky-900 dark:bg-sky-900 dark:text-sky-100",
-  AGENT: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+const ROLE_BADGE_VARIANT: Record<Role, "accent" | "info" | "neutral"> = {
+  ORCH: "accent",
+  POD_HEAD: "info",
+  AGENT: "neutral"
 };
 
 interface PageProps {
@@ -48,94 +52,85 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
   const config = await getConfig();
 
   return (
-    <main className="px-6 py-10">
-      <nav className="text-xs text-zinc-500">
-        <Link href="/admin/users" className="hover:underline">
-          Users
-        </Link>
-        <span className="px-1.5">›</span>
-        <span className="text-zinc-700 dark:text-zinc-300">{user.name}</span>
-      </nav>
+    <>
+      <PageHeader
+        eyebrow={`Admin · Users · ${user.email}`}
+        title={user.name}
+      />
+      <main className="mx-auto max-w-6xl px-6 py-10">
+        <nav className="text-xs text-fg-muted">
+          <Link href="/admin/users" className="text-brand-accent hover:underline">
+            ← Back to Users
+          </Link>
+        </nav>
 
-      <header className="mt-3 flex flex-wrap items-center gap-3">
-        <h1 className="text-3xl font-semibold tracking-tight">{user.name}</h1>
-        <span
-          className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${ROLE_BADGE[user.role]}`}
-        >
-          {user.role}
-        </span>
-        {user.isAdmin && (
-          <span className="inline-block rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-900 dark:text-amber-100">
-            admin
+        <header className="mt-4 flex flex-wrap items-center gap-3">
+          <Badge variant={ROLE_BADGE_VARIANT[user.role]}>{user.role}</Badge>
+          {user.isAdmin && <Badge variant="warning">admin</Badge>}
+        </header>
+
+        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-fg-muted">
+          <span className="font-mono">{user.email}</span>
+          <span>·</span>
+          <span>
+            Profile:{" "}
+            {user.profileCompletedAt ? (
+              <span className="font-medium text-emerald-700">✓ completed</span>
+            ) : (
+              <span className="text-fg-subtle">not completed</span>
+            )}
           </span>
-        )}
-      </header>
-
-      <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-zinc-500">
-        <span className="font-mono">{user.email}</span>
-        <span>·</span>
-        <span>
-          Profile:{" "}
-          {user.profileCompletedAt ? (
-            <span className="text-emerald-700 dark:text-emerald-400">
-              ✓ completed
-            </span>
-          ) : (
-            <span className="text-zinc-400">not completed</span>
-          )}
-        </span>
-        <span>·</span>
-        <span>
-          Prefs:{" "}
-          {user.preferencesSubmittedAt ? (
-            <span className="text-emerald-700 dark:text-emerald-400">
-              ✓ submitted
-            </span>
-          ) : (
-            <span className="text-zinc-400">not submitted</span>
-          )}
-        </span>
-        <span>·</span>
-        <span>
-          Joined{" "}
-          <time dateTime={user.createdAt.toISOString()}>
-            {user.createdAt.toISOString().slice(0, 10)}
-          </time>
-        </span>
-      </div>
-
-      <ProfileCard user={user} />
-
-      <section className="mt-10">
-        <h2 className="text-sm font-medium uppercase tracking-wider text-zinc-500">
-          Preferences
-        </h2>
-        <p className="mt-1 text-xs text-zinc-500">
-          {ROLE_LABEL[user.role]}&apos;s ranked picks (root → branches → children) and who picked
-          them in return.
-        </p>
-
-        <div className="mt-4">
-          {user.role === "AGENT" ? (
-            <AgentTree
-              name={user.name}
-              profileId={user.agentProfile?.id ?? null}
-            />
-          ) : user.role === "POD_HEAD" ? (
-            <PodHeadTree
-              name={user.name}
-              profileId={user.podHeadProfile?.id ?? null}
-              podHeadCount={config.podHeadCount}
-            />
-          ) : (
-            <OrchTree
-              name={user.name}
-              profileId={user.orchProfile?.id ?? null}
-            />
-          )}
+          <span>·</span>
+          <span>
+            Prefs:{" "}
+            {user.preferencesSubmittedAt ? (
+              <span className="font-medium text-emerald-700">✓ submitted</span>
+            ) : (
+              <span className="text-fg-subtle">not submitted</span>
+            )}
+          </span>
+          <span>·</span>
+          <span>
+            Joined{" "}
+            <time dateTime={user.createdAt.toISOString()}>
+              {user.createdAt.toISOString().slice(0, 10)}
+            </time>
+          </span>
         </div>
-      </section>
-    </main>
+
+        <ProfileCard user={user} />
+
+        <section className="mt-10">
+          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-fg-muted">
+            Preferences
+          </h2>
+          <p className="mt-1 text-xs text-fg-muted">
+            {ROLE_LABEL[user.role]}&apos;s ranked picks (root → branches →
+            children) and who picked them in return.
+          </p>
+
+          <div className="mt-4">
+            {user.role === "AGENT" ? (
+              <AgentTree
+                name={user.name}
+                profileId={user.agentProfile?.id ?? null}
+              />
+            ) : user.role === "POD_HEAD" ? (
+              <PodHeadTree
+                name={user.name}
+                profileId={user.podHeadProfile?.id ?? null}
+                podHeadCount={config.podHeadCount}
+              />
+            ) : (
+              <OrchTree
+                name={user.name}
+                profileId={user.orchProfile?.id ?? null}
+              />
+            )}
+          </div>
+        </section>
+      </main>
+    </>
   );
 }
 
@@ -180,16 +175,16 @@ function ProfileCard({
   const department = user.podHeadProfile?.department ?? null;
 
   return (
-    <section className="mt-8 rounded-md border border-zinc-200 px-4 py-4 dark:border-zinc-800">
-      <h2 className="text-sm font-medium uppercase tracking-wider text-zinc-500">
+    <Card padding="lg" className="mt-8">
+      <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-fg-muted">
         Profile
       </h2>
 
       {!profile && (
-        <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+        <Alert variant="warning" className="mt-3 text-xs">
           This user does not have a {ROLE_LABEL[user.role]} profile. They have
           not completed profile setup.
-        </p>
+        </Alert>
       )}
 
       <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -205,14 +200,14 @@ function ProfileCard({
 
           {skills.length > 0 && (
             <div>
-              <div className="text-xs uppercase tracking-wider text-zinc-500">
+              <div className="text-xs uppercase tracking-wider text-fg-muted">
                 Skills
               </div>
               <div className="mt-1 flex flex-wrap gap-1">
                 {skills.map((s) => (
                   <span
                     key={s}
-                    className="inline-block rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                    className="rounded-full bg-brand-accent-soft px-2 py-0.5 text-xs font-medium text-brand-electric"
                   >
                     {s}
                   </span>
@@ -223,24 +218,21 @@ function ProfileCard({
 
           {preferredDomains.length > 0 && (
             <div>
-              <div className="text-xs uppercase tracking-wider text-zinc-500">
+              <div className="text-xs uppercase tracking-wider text-fg-muted">
                 Preferred domains
               </div>
               <div className="mt-1 flex flex-wrap gap-1">
                 {preferredDomains.map((d) => (
-                  <span
-                    key={d}
-                    className="inline-block rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-900 dark:bg-sky-900 dark:text-sky-100"
-                  >
+                  <Badge key={d} variant="info">
                     {d}
-                  </span>
+                  </Badge>
                 ))}
               </div>
             </div>
           )}
         </div>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -257,12 +249,12 @@ function Field({
 }) {
   return (
     <div>
-      <div className="text-xs uppercase tracking-wider text-zinc-500">
+      <div className="text-xs uppercase tracking-wider text-fg-muted">
         {label}
       </div>
       <div
         className={[
-          "mt-1 text-sm",
+          "mt-1 text-sm text-fg",
           mono ? "font-mono text-xs" : "",
           multiline ? "whitespace-pre-wrap" : ""
         ].join(" ")}
@@ -270,7 +262,7 @@ function Field({
         {value && value.trim().length > 0 ? (
           value
         ) : (
-          <span className="text-zinc-400">—</span>
+          <span className="text-fg-subtle">—</span>
         )}
       </div>
     </div>
@@ -735,24 +727,20 @@ function RootHeader({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-base font-semibold">{name}</span>
-        <span
-          className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${ROLE_BADGE[role]}`}
-        >
-          {role}
+        <span className="font-display text-base font-semibold text-fg">
+          {name}
         </span>
+        <Badge variant={ROLE_BADGE_VARIANT[role]}>{role}</Badge>
       </div>
       {assignment ? (
         <div className="inline-flex items-center gap-1.5 text-xs">
-          <span className="inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100">
-            Matched
-          </span>
-          <span className="text-zinc-600 dark:text-zinc-400">
-            {assignment}
-          </span>
+          <Badge variant="success">Matched</Badge>
+          <span className="text-fg-muted">{assignment}</span>
         </div>
       ) : (
-        <div className="text-xs text-zinc-500">No finalized assignment yet.</div>
+        <div className="text-xs text-fg-muted">
+          No finalized assignment yet.
+        </div>
       )}
     </div>
   );
@@ -760,7 +748,7 @@ function RootHeader({
 
 function NoProfileMessage({ role, name }: { role: Role; name: string }) {
   return (
-    <div className="rounded-md border border-dashed border-zinc-300 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
+    <div className="rounded-md border border-dashed border-border-strong bg-surface-muted px-4 py-8 text-center text-sm text-fg-muted">
       {name} does not have a {ROLE_LABEL[role]} profile yet — no preferences to
       display.
     </div>

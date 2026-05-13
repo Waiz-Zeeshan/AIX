@@ -4,12 +4,14 @@
  * Variants:
  *   - "rank-achieved" | "their-rank"  → "Your #N pick" / "They ranked you #M"
  *   - "auto-assigned"                 → "Auto-assigned" (amber)
- *   - "primary-honored"               → "Primary pick honored ✓" (emerald)
- *   - "secondary-honored"             → "Got your secondary" (zinc)
+ *   - "primary-honored"               → "Primary pick honored" (emerald)
+ *   - "secondary-honored"             → "Got your secondary" (neutral)
  *   - "balance-fallback"              → "Balanced assignment" (amber)
  *
- * Pure presentational. Server-renderable.
+ * Renders via the centralized <Badge /> primitive.
  */
+
+import { Badge } from "@/components/ui/badge";
 
 export type TransparencyVariant =
   | "rank-achieved"
@@ -26,21 +28,6 @@ interface TransparencyBadgeProps {
   /** Optional: total list size (e.g. 10) for context. */
   outOf?: number;
 }
-
-const COLORS: Record<TransparencyVariant, string> = {
-  "rank-achieved":
-    "bg-emerald-100 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100",
-  "their-rank":
-    "bg-sky-100 text-sky-900 dark:bg-sky-900 dark:text-sky-100",
-  "auto-assigned":
-    "bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100",
-  "primary-honored":
-    "bg-emerald-100 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100",
-  "secondary-honored":
-    "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
-  "balance-fallback":
-    "bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100"
-};
 
 export function TransparencyBadge({
   variant,
@@ -73,11 +60,5 @@ export function TransparencyBadge({
       label = "Balanced assignment";
       break;
   }
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${COLORS[variant]}`}
-    >
-      {label}
-    </span>
-  );
+  return <Badge variant={variant}>{label}</Badge>;
 }

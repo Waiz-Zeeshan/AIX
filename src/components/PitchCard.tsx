@@ -34,12 +34,14 @@ export function PitchCard({
   action
 }: PitchCardProps) {
   return (
-    <article className="rounded-md border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+    <article className="rounded-lg border border-border-default bg-surface p-4 shadow-sm transition hover:border-brand-accent/40 hover:shadow-md">
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold tracking-tight">{name}</h3>
+          <h3 className="font-display text-sm font-semibold tracking-tight text-fg">
+            {name}
+          </h3>
           {(role || email) && (
-            <p className="mt-0.5 text-xs text-zinc-500">
+            <p className="mt-0.5 text-xs text-fg-muted">
               {role ? ROLE_LABEL[role] : null}
               {role && email ? " · " : null}
               {email}
@@ -54,7 +56,7 @@ export function PitchCard({
           {skills.map((s) => (
             <li
               key={s}
-              className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+              className="rounded-full bg-brand-accent-soft px-2 py-0.5 text-xs font-medium text-brand-electric"
             >
               {s}
             </li>
@@ -63,16 +65,14 @@ export function PitchCard({
       ) : null}
 
       {bio ? (
-        <p className="mt-3 line-clamp-2 text-xs text-zinc-600 dark:text-zinc-400">
-          {bio}
-        </p>
+        <p className="mt-3 line-clamp-2 text-xs text-fg-muted">{bio}</p>
       ) : null}
 
       <details className="mt-3 group">
-        <summary className="cursor-pointer text-xs font-medium text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100">
+        <summary className="cursor-pointer text-xs font-medium text-brand-accent hover:underline">
           Read pitch
         </summary>
-        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-fg">
           {pitch}
         </p>
       </details>

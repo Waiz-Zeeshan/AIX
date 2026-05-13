@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { PageHeader } from "@/components/chrome/PageHeader";
+import { Alert } from "@/components/ui/alert";
 import { getConfig } from "@/lib/config";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/permissions";
@@ -33,41 +35,40 @@ export default async function AdminProjectEditPage({
   const currentStatus = registration?.status ?? "MISSING";
 
   return (
-    <main className="px-6 py-10">
-      <div className="flex items-center gap-3 text-sm text-zinc-500">
-        <Link href="/admin/projects" className="hover:underline">
-          Projects
-        </Link>
-        <span>/</span>
-        <span className="text-zinc-700 dark:text-zinc-300">
-          {project.title}
-        </span>
-      </div>
-      <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-        Edit project
-      </h1>
-
-      {!registrationOpen && (
-        <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-          REGISTRATION is{" "}
-          <span className="font-mono font-medium">{currentStatus}</span>. Saving
-          is disabled. Re-open REGISTRATION on the Phases page to edit
-          projects.
-        </div>
-      )}
-
-      <ProjectForm
-        action={updateProject}
-        defaults={{
-          id: project.id,
-          title: project.title,
-          description: project.description,
-          tags: project.tags,
-          capacity: project.capacity
-        }}
-        submitLabel="Save changes"
-        defaultCapacityHint={config.defaultProjectCapacity}
+    <>
+      <PageHeader
+        eyebrow={`Admin · Projects · ${project.title}`}
+        title="Edit project"
       />
-    </main>
+      <main className="mx-auto max-w-3xl px-6 py-10">
+        <div className="mb-6 flex items-center gap-2 text-sm text-fg-muted">
+          <Link href="/admin/projects" className="text-brand-accent hover:underline">
+            ← Back to Projects
+          </Link>
+        </div>
+
+        {!registrationOpen && (
+          <Alert variant="warning">
+            REGISTRATION is{" "}
+            <span className="font-mono font-medium">{currentStatus}</span>.
+            Saving is disabled. Re-open REGISTRATION on the Phases page to edit
+            projects.
+          </Alert>
+        )}
+
+        <ProjectForm
+          action={updateProject}
+          defaults={{
+            id: project.id,
+            title: project.title,
+            description: project.description,
+            tags: project.tags,
+            capacity: project.capacity
+          }}
+          submitLabel="Save changes"
+          defaultCapacityHint={config.defaultProjectCapacity}
+        />
+      </main>
+    </>
   );
 }

@@ -3,6 +3,10 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { saveConfig, type ConfigFormState } from "./actions";
 
 type ConfigDefaults = {
@@ -34,21 +38,17 @@ export function ConfigForm({
   const [state, formAction] = useActionState(saveConfig, initialState);
 
   return (
-    <form action={formAction} className="mt-8 space-y-10">
+    <form action={formAction} className="space-y-10">
       {state.status === "success" && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100">
-          {state.message}
-        </div>
+        <Alert variant="success">{state.message}</Alert>
       )}
       {state.status === "error" && state.message && (
-        <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-100">
-          {state.message}
-        </div>
+        <Alert variant="danger">{state.message}</Alert>
       )}
       {state.warning && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-          <span className="font-medium">Balance warning:</span> {state.warning}
-        </div>
+        <Alert variant="warning" title="Balance warning">
+          {state.warning}
+        </Alert>
       )}
 
       <Group title="Counts">
@@ -142,26 +142,21 @@ export function ConfigForm({
 
       <Group title="Auth">
         <div className="sm:col-span-2">
-          <label
-            htmlFor="allowedEmailDomains"
-            className="block text-sm font-medium"
-          >
-            Allowed email domains
-          </label>
-          <p className="mt-1 text-xs text-zinc-500">
+          <Label htmlFor="allowedEmailDomains">Allowed email domains</Label>
+          <p className="mt-1 text-xs text-fg-muted">
             Comma-separated. Each entry must match a domain shape (e.g.{" "}
             <code className="font-mono">tkxel.com</code>).
           </p>
-          <input
+          <Input
             type="text"
             id="allowedEmailDomains"
             name="allowedEmailDomains"
             defaultValue={defaults.allowedEmailDomains.join(", ")}
             disabled={locked}
-            className="mt-2 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 disabled:bg-zinc-100 disabled:text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:disabled:bg-zinc-900"
+            className="mt-2"
           />
           {state.fieldErrors?.allowedEmailDomains && (
-            <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+            <p className="mt-1 text-xs text-red-600">
               {state.fieldErrors.allowedEmailDomains}
             </p>
           )}
@@ -170,46 +165,38 @@ export function ConfigForm({
 
       <Group title="Integrations">
         <div className="sm:col-span-2">
-          <label
-            htmlFor="agentSyncSheetId"
-            className="block text-sm font-medium"
-          >
-            Agent sync — Google Sheet
-          </label>
-          <p className="mt-1 text-xs text-zinc-500">
+          <Label htmlFor="agentSyncSheetId">Agent sync — Google Sheet</Label>
+          <p className="mt-1 text-xs text-fg-muted">
             Sheet ID, <code className="font-mono">id/range</code> (e.g.{" "}
             <code className="font-mono">1AbC.../Agents!A1:N700</code>), or full
             Google Sheets URL. Used by{" "}
-            <a className="underline" href="/admin/agent-sync">
+            <a className="text-brand-accent underline" href="/admin/agent-sync">
               /admin/agent-sync
             </a>
             . Leave blank to disable.
           </p>
-          <input
+          <Input
             type="text"
             id="agentSyncSheetId"
             name="agentSyncSheetId"
             defaultValue={defaults.agentSyncSheetId}
             disabled={locked}
             placeholder="1AbC.../Agents!A1:N700"
-            className="mt-2 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 font-mono text-xs shadow-sm focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 disabled:bg-zinc-100 disabled:text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:disabled:bg-zinc-900"
+            className="mt-2 font-mono text-xs"
           />
           {state.fieldErrors?.agentSyncSheetId && (
-            <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+            <p className="mt-1 text-xs text-red-600">
               {state.fieldErrors.agentSyncSheetId}
             </p>
           )}
         </div>
         <div className="sm:col-span-2">
-          <label
-            htmlFor="podHeadSyncSheetId"
-            className="block text-sm font-medium"
-          >
+          <Label htmlFor="podHeadSyncSheetId">
             Pod Head sync — Google Sheet
-          </label>
-          <p className="mt-1 text-xs text-zinc-500">
+          </Label>
+          <p className="mt-1 text-xs text-fg-muted">
             Used by{" "}
-            <a className="underline" href="/admin/pod-head-sync">
+            <a className="text-brand-accent underline" href="/admin/pod-head-sync">
               /admin/pod-head-sync
             </a>
             . Expected columns:{" "}
@@ -218,27 +205,27 @@ export function ConfigForm({
             </code>
             . Leave blank to disable.
           </p>
-          <input
+          <Input
             type="text"
             id="podHeadSyncSheetId"
             name="podHeadSyncSheetId"
             defaultValue={defaults.podHeadSyncSheetId}
             disabled={locked}
             placeholder="1AbC.../PodHeads!A1:F100"
-            className="mt-2 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 font-mono text-xs shadow-sm focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 disabled:bg-zinc-100 disabled:text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:disabled:bg-zinc-900"
+            className="mt-2 font-mono text-xs"
           />
           {state.fieldErrors?.podHeadSyncSheetId && (
-            <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+            <p className="mt-1 text-xs text-red-600">
               {state.fieldErrors.podHeadSyncSheetId}
             </p>
           )}
         </div>
       </Group>
 
-      <div className="flex items-center gap-3 border-t border-zinc-200 pt-6 dark:border-zinc-800">
+      <div className="flex items-center gap-3 border-t border-border-default pt-6">
         <SubmitButton disabled={locked} />
         {locked && (
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-fg-muted">
             Open REGISTRATION to enable saving.
           </span>
         )}
@@ -256,10 +243,12 @@ function Group({
 }) {
   return (
     <section>
-      <h2 className="text-sm font-medium uppercase tracking-wider text-zinc-500">
+      <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-fg-muted">
         {title}
       </h2>
-      <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">{children}</div>
+      <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {children}
+      </div>
     </section>
   );
 }
@@ -279,10 +268,8 @@ function NumberField({
 }) {
   return (
     <div>
-      <label htmlFor={name} className="block text-sm font-medium">
-        {label}
-      </label>
-      <input
+      <Label htmlFor={name}>{label}</Label>
+      <Input
         type="number"
         id={name}
         name={name}
@@ -290,11 +277,9 @@ function NumberField({
         min={1}
         step={1}
         disabled={disabled}
-        className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 disabled:bg-zinc-100 disabled:text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:disabled:bg-zinc-900"
+        className="mt-1"
       />
-      {error && (
-        <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">{error}</p>
-      )}
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
   );
 }
@@ -302,12 +287,8 @@ function NumberField({
 function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={disabled || pending}
-      className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:disabled:bg-zinc-800 dark:disabled:text-zinc-500"
-    >
+    <Button type="submit" disabled={disabled || pending} variant="accent">
       {pending ? "Saving…" : "Save configuration"}
-    </button>
+    </Button>
   );
 }

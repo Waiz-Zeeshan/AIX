@@ -3,6 +3,14 @@ import type { Prisma, Role } from "@prisma/client";
 
 import { SyncPanel as AgentSyncPanel } from "@/app/admin/agent-sync/sync-panel";
 import { PodHeadSyncPanel } from "@/app/admin/pod-head-sync/sync-panel";
+import { PageHeader } from "@/components/chrome/PageHeader";
+import { SectionBanner } from "@/components/chrome/SectionBanner";
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { SYNC_ISSUE_DUPLICATE_POD_HEADS } from "@/lib/agent-sync";
 import { getConfig } from "@/lib/config";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/permissions";
@@ -25,8 +33,15 @@ const SYNC_AUDIT_ACTIONS = [
   "POD_HEAD_SYNC_APPLY"
 ] as const;
 
+type DupesFilter = "hide" | "only";
+
 interface PageProps {
-  searchParams: Promise<{ role?: string; q?: string; page?: string }>;
+  searchParams: Promise<{
+    role?: string;
+    q?: string;
+    page?: string;
+    dupes?: string;
+  }>;
 }
 
 export default async function AdminUsersPage({ searchParams }: PageProps) {
@@ -40,6 +55,8 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
       : null;
   const q = (params.q ?? "").trim();
   const page = Math.max(1, Number(params.page) || 1);
+  const dupes: DupesFilter | null =
+    params.dupes === "hide" || params.dupes === "only" ? params.dupes : null;
 
   const whereUsers: Prisma.UserWhereInput = {};
   if (role) whereUsers.role = role;
@@ -49,6 +66,11 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
       { name: { contains: q, mode: "insensitive" } },
       { empId: { contains: q, mode: "insensitive" } }
     ];
+  }
+  if (dupes === "hide") {
+    whereUsers.syncIssues = { isEmpty: true };
+  } else if (dupes === "only") {
+    whereUsers.syncIssues = { hasSome: [SYNC_ISSUE_DUPLICATE_POD_HEADS] };
   }
 
   const [
@@ -97,12 +119,19 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
   for (const r of roleCounts) byRole[r.role] = r._count._all;
 
   const totalPages = Math.max(1, Math.ceil(usersFilteredTotal / PAGE_SIZE));
-  const buildHref = (next: { role?: string; q?: string; page?: number }) => {
+  const buildHref = (next: {
+    role?: string;
+    q?: string;
+    page?: number;
+    dupes?: DupesFilter | "";
+  }) => {
     const u = new URLSearchParams();
     const r = next.role ?? role ?? "";
     if (r) u.set("role", r);
     const qq = next.q ?? q;
     if (qq) u.set("q", qq);
+    const d = next.dupes === undefined ? dupes : next.dupes;
+    if (d) u.set("dupes", d);
     const p = next.page ?? page;
     if (p > 1) u.set("page", String(p));
     const s = u.toString();
@@ -115,395 +144,389 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
     !envConfigured || !config.podHeadSyncSheetId || !phaseOpen;
 
   return (
-    <main className="px-6 py-10">
-      <h1 className="text-3xl font-semibold tracking-tight">Users</h1>
-      <p className="mt-2 text-sm text-zinc-500">
-        Inspect the roster, drill into any user, and sync Pod Heads or Agents
-        from the configured Google Sheets.
-      </p>
-
-      <section className="mt-8 border-t border-zinc-200 pt-8 dark:border-zinc-800">
-        <h2 className="text-sm font-medium uppercase tracking-wider text-zinc-500">
-          Roster sync
-        </h2>
-        <p className="mt-1 text-xs text-zinc-500">
-          Pull Pod Heads and Agents (with ranked Pod-Head priorities) from
-          Google Sheets. Re-running is idempotent.
-        </p>
-
-        {!envConfigured && (
-          <Alert tone="error">
-            <code className="font-mono">GOOGLE_SHEETS_SA_KEY_JSON</code> is not
-            set. Add the service-account JSON to{" "}
-            <code className="font-mono">.env</code> and restart the dev
-            container before syncing.
-          </Alert>
-        )}
-        {!phaseOpen && (
-          <Alert tone="warn">
-            Neither REGISTRATION nor PREFERENCES is OPEN — syncs are disabled. (
-            {phaseSummary || "no phases set"})
-          </Alert>
-        )}
-
-        <div className="mt-4 space-y-3">
-          <details className="group rounded-md border border-zinc-200 dark:border-zinc-800">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-900">
-              <span className="flex items-center gap-2">
-                <span className="text-zinc-400 group-open:rotate-90 transition-transform">
-                  ▸
-                </span>
-                Pod Head sync
-              </span>
-              <span className="text-xs font-normal text-zinc-500">
-                {config.podHeadSyncSheetId ? (
-                  <span className="font-mono">
-                    sheet: {truncateSheet(config.podHeadSyncSheetId)}
-                  </span>
-                ) : (
-                  <span className="text-amber-700 dark:text-amber-400">
-                    sheet not configured
-                  </span>
-                )}
-              </span>
-            </summary>
-            <div className="border-t border-zinc-200 px-4 pb-4 dark:border-zinc-800">
-              <p className="mt-3 text-xs text-zinc-500">
-                Bootstrap Pod Heads from a Google Sheet. Each row upserts a
-                User (role=POD_HEAD) and a minimal PodHeadProfile carrying the
-                Pod Head&apos;s <code className="font-mono">department</code>.
-                Pod Heads still complete pitch / bio / skills via{" "}
-                <code className="font-mono">/profile-setup</code>.
-              </p>
-              {!config.podHeadSyncSheetId && (
-                <Alert tone="warn">
-                  No sheet configured. Set{" "}
-                  <code className="font-mono">podHeadSyncSheetId</code> in{" "}
-                  <Link className="underline" href="/admin/config">
-                    /admin/config
-                  </Link>
-                  .
-                </Alert>
-              )}
-              <PodHeadSyncPanel
-                disabled={podHeadSyncDisabled}
-                sheetSpec={config.podHeadSyncSheetId ?? ""}
-              />
-            </div>
-          </details>
-
-          <details className="group rounded-md border border-zinc-200 dark:border-zinc-800">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-900">
-              <span className="flex items-center gap-2">
-                <span className="text-zinc-400 group-open:rotate-90 transition-transform">
-                  ▸
-                </span>
-                Agent sync
-              </span>
-              <span className="text-xs font-normal text-zinc-500">
-                {config.agentSyncSheetId ? (
-                  <span className="font-mono">
-                    sheet: {truncateSheet(config.agentSyncSheetId)}
-                  </span>
-                ) : (
-                  <span className="text-amber-700 dark:text-amber-400">
-                    sheet not configured
-                  </span>
-                )}
-              </span>
-            </summary>
-            <div className="border-t border-zinc-200 px-4 pb-4 dark:border-zinc-800">
-              <p className="mt-3 text-xs text-zinc-500">
-                Pull agent rows + Pod-Head priorities from the configured
-                Google Sheet. Each row upserts a User (role=AGENT), an
-                AgentProfile, and replaces the agent&apos;s Pod-Head rankings —
-                flagged <code className="font-mono">autoGenerated=true</code>{" "}
-                so agents can still override in{" "}
-                <code className="font-mono">/agent</code>.
-              </p>
-              {!config.agentSyncSheetId && (
-                <Alert tone="warn">
-                  No sheet configured. Set{" "}
-                  <code className="font-mono">agentSyncSheetId</code> in{" "}
-                  <Link className="underline" href="/admin/config">
-                    /admin/config
-                  </Link>
-                  .
-                </Alert>
-              )}
-              <AgentSyncPanel
-                disabled={agentSyncDisabled}
-                sheetSpec={config.agentSyncSheetId ?? ""}
-                topN={config.agentRanksTopNPodHeads}
-              />
-            </div>
-          </details>
-        </div>
-      </section>
-
-      <section className="mt-12 border-t border-zinc-200 pt-8 dark:border-zinc-800">
-        <h2 className="text-sm font-medium uppercase tracking-wider text-zinc-500">
-          Current roster
-        </h2>
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Total users" value={totalUsers} />
-          {ROLES.map((r) => (
-            <Stat key={r} label={ROLE_LABEL[r]} value={byRole[r]} />
-          ))}
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <Stat label="Admins" value={adminCount} />
-          <Stat
-            label="Profiles completed"
-            value={`${profileCompleted} / ${totalUsers}`}
+    <>
+      <PageHeader
+        eyebrow="Admin"
+        title="Users"
+        subtitle="Inspect the roster, drill into any user, and sync Pod Heads or Agents from the configured Google Sheets."
+      />
+      <main className="mx-auto max-w-7xl px-6 py-10">
+        <section>
+          <SectionBanner
+            title="Roster sync"
+            subtitle="Pull Pod Heads and Agents (with ranked Pod-Head priorities) from Google Sheets. Re-running is idempotent."
           />
-          <Stat
-            label="Preferences submitted"
-            value={`${preferencesSubmitted} / ${totalUsers}`}
-          />
-        </div>
-      </section>
 
-      <section className="mt-12 border-t border-zinc-200 pt-8 dark:border-zinc-800">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="text-sm font-medium uppercase tracking-wider text-zinc-500">
-              User directory
-            </h2>
-            <p className="mt-1 text-xs text-zinc-500">
+          <div className="mt-6 space-y-4">
+            {!envConfigured && (
+              <Alert variant="danger">
+                <code className="font-mono">GOOGLE_SHEETS_SA_KEY_JSON</code> is
+                not set. Add the service-account JSON to{" "}
+                <code className="font-mono">.env</code> and restart the dev
+                container before syncing.
+              </Alert>
+            )}
+            {!phaseOpen && (
+              <Alert variant="warning">
+                Neither REGISTRATION nor PREFERENCES is OPEN — syncs are
+                disabled. ({phaseSummary || "no phases set"})
+              </Alert>
+            )}
+          </div>
+
+          <div className="mt-6 space-y-3">
+            <details className="group rounded-lg border border-border-default bg-surface">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium hover:bg-surface-muted">
+                <span className="flex items-center gap-2 text-fg">
+                  <span className="text-fg-subtle transition-transform group-open:rotate-90">
+                    ▸
+                  </span>
+                  Pod Head sync
+                </span>
+                <span className="text-xs font-normal text-fg-muted">
+                  {config.podHeadSyncSheetId ? (
+                    <span className="font-mono">
+                      sheet: {truncateSheet(config.podHeadSyncSheetId)}
+                    </span>
+                  ) : (
+                    <span className="text-amber-700">sheet not configured</span>
+                  )}
+                </span>
+              </summary>
+              <div className="border-t border-border-default px-4 pb-4">
+                <p className="mt-3 text-xs text-fg-muted">
+                  Bootstrap Pod Heads from a Google Sheet. Each row upserts a
+                  User (role=POD_HEAD) and a minimal PodHeadProfile carrying
+                  the Pod Head&apos;s{" "}
+                  <code className="font-mono">department</code>. Pod Heads
+                  still complete pitch / bio / skills via{" "}
+                  <code className="font-mono">/profile-setup</code>.
+                </p>
+                {!config.podHeadSyncSheetId && (
+                  <Alert variant="warning" className="mt-3">
+                    No sheet configured. Set{" "}
+                    <code className="font-mono">podHeadSyncSheetId</code> in{" "}
+                    <Link className="text-brand-accent underline" href="/admin/config">
+                      /admin/config
+                    </Link>
+                    .
+                  </Alert>
+                )}
+                <PodHeadSyncPanel
+                  disabled={podHeadSyncDisabled}
+                  sheetSpec={config.podHeadSyncSheetId ?? ""}
+                />
+              </div>
+            </details>
+
+            <details className="group rounded-lg border border-border-default bg-surface">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium hover:bg-surface-muted">
+                <span className="flex items-center gap-2 text-fg">
+                  <span className="text-fg-subtle transition-transform group-open:rotate-90">
+                    ▸
+                  </span>
+                  Agent sync
+                </span>
+                <span className="text-xs font-normal text-fg-muted">
+                  {config.agentSyncSheetId ? (
+                    <span className="font-mono">
+                      sheet: {truncateSheet(config.agentSyncSheetId)}
+                    </span>
+                  ) : (
+                    <span className="text-amber-700">sheet not configured</span>
+                  )}
+                </span>
+              </summary>
+              <div className="border-t border-border-default px-4 pb-4">
+                <p className="mt-3 text-xs text-fg-muted">
+                  Pull agent rows + Pod-Head priorities from the configured
+                  Google Sheet. Each row upserts a User (role=AGENT), an
+                  AgentProfile, and replaces the agent&apos;s Pod-Head rankings
+                  — flagged{" "}
+                  <code className="font-mono">autoGenerated=true</code> so
+                  agents can still override in{" "}
+                  <code className="font-mono">/agent</code>.
+                </p>
+                {!config.agentSyncSheetId && (
+                  <Alert variant="warning" className="mt-3">
+                    No sheet configured. Set{" "}
+                    <code className="font-mono">agentSyncSheetId</code> in{" "}
+                    <Link className="text-brand-accent underline" href="/admin/config">
+                      /admin/config
+                    </Link>
+                    .
+                  </Alert>
+                )}
+                <AgentSyncPanel
+                  disabled={agentSyncDisabled}
+                  sheetSpec={config.agentSyncSheetId ?? ""}
+                  topN={config.agentRanksTopNPodHeads}
+                />
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <section className="mt-12">
+          <SectionBanner title="Current roster" />
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Stat label="Total users" value={totalUsers} />
+            {ROLES.map((r) => (
+              <Stat key={r} label={ROLE_LABEL[r]} value={byRole[r]} />
+            ))}
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <Stat label="Admins" value={adminCount} />
+            <Stat
+              label="Profiles completed"
+              value={`${profileCompleted} / ${totalUsers}`}
+            />
+            <Stat
+              label="Preferences submitted"
+              value={`${preferencesSubmitted} / ${totalUsers}`}
+            />
+          </div>
+        </section>
+
+        <section className="mt-12">
+          <SectionBanner title="User directory" />
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <p className="text-xs text-fg-muted">
               {usersFilteredTotal.toLocaleString()} match
               {usersFilteredTotal === 1 ? "" : "es"} · showing page {page} of{" "}
               {totalPages}
             </p>
+
+            <form
+              method="get"
+              action="/admin/users"
+              className="flex flex-wrap items-center gap-2 text-sm"
+            >
+              <select
+                name="role"
+                defaultValue={role ?? ""}
+                className="rounded-md border border-border-strong bg-surface px-2 py-1.5 text-sm text-fg"
+              >
+                <option value="">All roles</option>
+                {ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {ROLE_LABEL[r]}
+                  </option>
+                ))}
+              </select>
+              <select
+                name="dupes"
+                defaultValue={dupes ?? ""}
+                className="rounded-md border border-border-strong bg-surface px-2 py-1.5 text-sm text-fg"
+                aria-label="Filter by sync issues"
+              >
+                <option value="">All agents</option>
+                <option value="hide">Hide duplicate Pod Heads</option>
+                <option value="only">Only duplicate Pod Heads</option>
+              </select>
+              <Input
+                type="text"
+                name="q"
+                defaultValue={q}
+                placeholder="search email, name, EMP ID"
+                className="w-56"
+              />
+              <Button type="submit" variant="secondary" size="sm">
+                Filter
+              </Button>
+              {(role || q || dupes) && (
+                <Link
+                  href="/admin/users"
+                  className="text-xs text-brand-accent underline hover:no-underline"
+                >
+                  clear
+                </Link>
+              )}
+            </form>
           </div>
 
-          <form
-            method="get"
-            action="/admin/users"
-            className="flex flex-wrap items-center gap-2 text-sm"
-          >
-            <select
-              name="role"
-              defaultValue={role ?? ""}
-              className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-            >
-              <option value="">All roles</option>
-              {ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {ROLE_LABEL[r]}
-                </option>
-              ))}
-            </select>
-            <input
-              type="text"
-              name="q"
-              defaultValue={q}
-              placeholder="search email, name, EMP ID"
-              className="w-56 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-            />
-            <button
-              type="submit"
-              className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
-            >
-              Filter
-            </button>
-            {(role || q) && (
-              <Link
-                href="/admin/users"
-                className="text-xs text-zinc-500 underline hover:text-zinc-700 dark:hover:text-zinc-300"
-              >
-                clear
-              </Link>
-            )}
-          </form>
-        </div>
-
-        <div className="mt-4 overflow-x-auto rounded-md border border-zinc-200 dark:border-zinc-800">
-          <table className="min-w-full text-sm">
-            <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wider text-zinc-500 dark:bg-zinc-900">
-              <tr>
-                <th className="px-3 py-2">Email</th>
-                <th className="px-3 py-2">Name</th>
-                <th className="px-3 py-2">Role</th>
-                <th className="px-3 py-2">EMP ID</th>
-                <th className="px-3 py-2">Phone</th>
-                <th className="px-3 py-2">Department</th>
-                <th className="px-3 py-2">Profile</th>
-                <th className="px-3 py-2">Prefs</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {users.length === 0 ? (
+          <div className="mt-4 overflow-x-auto rounded-lg border border-border-default bg-surface">
+            <table className="min-w-full text-sm">
+              <thead className="bg-surface-alt text-left font-display text-xs uppercase tracking-wider text-fg-muted">
                 <tr>
-                  <td
-                    colSpan={8}
-                    className="px-3 py-6 text-center text-xs text-zinc-500"
-                  >
-                    No users match the current filter.
-                  </td>
+                  <th className="px-3 py-2">Email</th>
+                  <th className="px-3 py-2">Name</th>
+                  <th className="px-3 py-2">Role</th>
+                  <th className="px-3 py-2">EMP ID</th>
+                  <th className="px-3 py-2">Phone</th>
+                  <th className="px-3 py-2">Department</th>
+                  <th className="px-3 py-2">Profile</th>
+                  <th className="px-3 py-2">Prefs</th>
                 </tr>
-              ) : (
-                users.map((u) => (
-                  <tr
-                    key={u.id}
-                    className="hover:bg-zinc-50 dark:hover:bg-zinc-900"
-                  >
-                    <td className="px-3 py-2 font-mono text-xs">
-                      <Link
-                        href={`/admin/users/${u.id}`}
-                        className="text-zinc-700 hover:underline dark:text-zinc-200"
-                      >
-                        {u.email}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2">
-                      <Link
-                        href={`/admin/users/${u.id}`}
-                        className="hover:underline"
-                      >
-                        {u.name}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2">
-                      <RoleBadge role={u.role} isAdmin={u.isAdmin} />
-                    </td>
-                    <td className="px-3 py-2 font-mono text-xs">
-                      {u.empId ?? <span className="text-zinc-400">—</span>}
-                    </td>
-                    <td className="px-3 py-2 font-mono text-xs">
-                      {u.phone ?? <span className="text-zinc-400">—</span>}
-                    </td>
-                    <td className="px-3 py-2 text-xs">
-                      {u.podHeadProfile?.department ?? (
-                        <span className="text-zinc-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-xs">
-                      {u.profileCompletedAt ? (
-                        <span className="text-emerald-700 dark:text-emerald-400">
-                          ✓
-                        </span>
-                      ) : (
-                        <span className="text-zinc-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-xs">
-                      {u.preferencesSubmittedAt ? (
-                        <span className="text-emerald-700 dark:text-emerald-400">
-                          ✓
-                        </span>
-                      ) : (
-                        <span className="text-zinc-400">—</span>
-                      )}
+              </thead>
+              <tbody className="divide-y divide-border-default">
+                {users.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="px-3 py-6 text-center text-xs text-fg-muted"
+                    >
+                      No users match the current filter.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {totalPages > 1 && (
-          <div className="mt-3 flex items-center justify-between text-xs text-zinc-500">
-            <div>
-              Page {page} of {totalPages}
-            </div>
-            <div className="flex gap-2">
-              {page > 1 ? (
-                <Link
-                  href={buildHref({ page: page - 1 })}
-                  className="rounded-md border border-zinc-300 px-3 py-1 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
-                >
-                  ← Prev
-                </Link>
-              ) : (
-                <span className="rounded-md border border-zinc-200 px-3 py-1 text-zinc-300 dark:border-zinc-800 dark:text-zinc-700">
-                  ← Prev
-                </span>
-              )}
-              {page < totalPages ? (
-                <Link
-                  href={buildHref({ page: page + 1 })}
-                  className="rounded-md border border-zinc-300 px-3 py-1 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
-                >
-                  Next →
-                </Link>
-              ) : (
-                <span className="rounded-md border border-zinc-200 px-3 py-1 text-zinc-300 dark:border-zinc-800 dark:text-zinc-700">
-                  Next →
-                </span>
-              )}
-            </div>
+                ) : (
+                  users.map((u) => (
+                    <tr
+                      key={u.id}
+                      className="transition hover:bg-brand-accent-soft/40"
+                    >
+                      <td className="px-3 py-2 font-mono text-xs">
+                        <Link
+                          href={`/admin/users/${u.id}`}
+                          className="text-brand-accent hover:underline"
+                        >
+                          {u.email}
+                        </Link>
+                      </td>
+                      <td className="px-3 py-2 text-fg">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link
+                            href={`/admin/users/${u.id}`}
+                            className="hover:underline"
+                          >
+                            {u.name}
+                          </Link>
+                          {u.syncIssues?.includes(
+                            SYNC_ISSUE_DUPLICATE_POD_HEADS
+                          ) && (
+                            <Badge variant="warning">Duplicate Pod Heads</Badge>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <RoleBadge role={u.role} isAdmin={u.isAdmin} />
+                      </td>
+                      <td className="px-3 py-2 font-mono text-xs text-fg">
+                        {u.empId ?? (
+                          <span className="text-fg-subtle">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-xs text-fg">
+                        {u.phone ?? (
+                          <span className="text-fg-subtle">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-fg">
+                        {u.podHeadProfile?.department ?? (
+                          <span className="text-fg-subtle">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-xs">
+                        {u.profileCompletedAt ? (
+                          <span className="font-medium text-emerald-700">
+                            ✓
+                          </span>
+                        ) : (
+                          <span className="text-fg-subtle">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-xs">
+                        {u.preferencesSubmittedAt ? (
+                          <span className="font-medium text-emerald-700">
+                            ✓
+                          </span>
+                        ) : (
+                          <span className="text-fg-subtle">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
-      </section>
 
-      <section className="mt-12 border-t border-zinc-200 pt-8 dark:border-zinc-800">
-        <h2 className="text-sm font-medium uppercase tracking-wider text-zinc-500">
-          Recent sync activity
-        </h2>
-        {recentSync.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-500">No syncs yet.</p>
-        ) : (
-          <ul className="mt-3 divide-y rounded-md border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
-            {recentSync.map((entry) => {
-              const d = entry.details as SyncAuditDetails | null;
-              const isApply = entry.action.endsWith("_APPLY");
-              const family = entry.action.startsWith("AGENT_")
-                ? "agent"
-                : "pod-head";
-              return (
-                <li
-                  key={entry.id}
-                  className="flex flex-col gap-1 px-4 py-3 text-sm"
-                >
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
-                    <time dateTime={entry.createdAt.toISOString()}>
-                      {entry.createdAt
-                        .toISOString()
-                        .replace("T", " ")
-                        .slice(0, 19)}
-                      Z
-                    </time>
-                    <span
-                      className={
-                        family === "agent"
-                          ? "rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                          : "rounded bg-sky-100 px-1.5 py-0.5 text-sky-900 dark:bg-sky-900 dark:text-sky-100"
-                      }
-                    >
-                      {family}
-                    </span>
-                    <span
-                      className={
-                        isApply
-                          ? "rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100"
-                          : "rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                      }
-                    >
-                      {isApply ? "apply" : "preview"}
-                    </span>
-                    <span className="font-mono">actor {entry.actorId}</span>
-                  </div>
-                  {d ? (
-                    <div className="text-xs text-zinc-600 dark:text-zinc-400">
-                      rows={d.rowsTotal ?? "?"} · created={d.created ?? 0} ·
-                      updated={d.updated ?? 0} · skipped=
-                      {d.skipped ?? d.skips ?? 0}
-                      {d.failedRowIndexes && d.failedRowIndexes.length > 0 ? (
-                        <span className="ml-1 text-red-700 dark:text-red-400">
-                          · {d.failedRowIndexes.length} failed
-                        </span>
-                      ) : null}
+          {totalPages > 1 && (
+            <div className="mt-3 flex items-center justify-between text-xs text-fg-muted">
+              <div>
+                Page {page} of {totalPages}
+              </div>
+              <div className="flex gap-2">
+                {page > 1 ? (
+                  <Link href={buildHref({ page: page - 1 })}>
+                    <Button variant="secondary" size="sm">
+                      ← Prev
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button variant="secondary" size="sm" disabled>
+                    ← Prev
+                  </Button>
+                )}
+                {page < totalPages ? (
+                  <Link href={buildHref({ page: page + 1 })}>
+                    <Button variant="secondary" size="sm">
+                      Next →
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button variant="secondary" size="sm" disabled>
+                    Next →
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section className="mt-12">
+          <SectionBanner title="Recent sync activity" />
+          {recentSync.length === 0 ? (
+            <p className="mt-6 text-sm text-fg-muted">No syncs yet.</p>
+          ) : (
+            <ul className="mt-6 divide-y divide-border-default rounded-lg border border-border-default bg-surface">
+              {recentSync.map((entry) => {
+                const d = entry.details as SyncAuditDetails | null;
+                const isApply = entry.action.endsWith("_APPLY");
+                const family = entry.action.startsWith("AGENT_")
+                  ? "agent"
+                  : "pod-head";
+                return (
+                  <li
+                    key={entry.id}
+                    className="flex flex-col gap-1 px-4 py-3 text-sm"
+                  >
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-fg-muted">
+                      <time dateTime={entry.createdAt.toISOString()}>
+                        {entry.createdAt
+                          .toISOString()
+                          .replace("T", " ")
+                          .slice(0, 19)}
+                        Z
+                      </time>
+                      <Badge variant={family === "agent" ? "neutral" : "info"}>
+                        {family}
+                      </Badge>
+                      <Badge variant={isApply ? "success" : "neutral"}>
+                        {isApply ? "apply" : "preview"}
+                      </Badge>
+                      <span className="font-mono">actor {entry.actorId}</span>
                     </div>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-    </main>
+                    {d ? (
+                      <div className="text-xs text-fg-muted">
+                        rows={d.rowsTotal ?? "?"} · created={d.created ?? 0} ·
+                        updated={d.updated ?? 0} · skipped=
+                        {d.skipped ?? d.skips ?? 0}
+                        {d.failedRowIndexes && d.failedRowIndexes.length > 0 ? (
+                          <span className="ml-1 font-medium text-red-700">
+                            · {d.failedRowIndexes.length} failed
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      </main>
+    </>
   );
 }
 
@@ -514,50 +537,26 @@ function truncateSheet(spec: string): string {
 
 function Stat({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="rounded-md border border-zinc-200 px-3 py-2 dark:border-zinc-800">
-      <div className="text-xs text-zinc-500">{label}</div>
-      <div className="mt-0.5 text-lg font-semibold tabular-nums">{value}</div>
-    </div>
+    <Card padding="sm">
+      <div className="text-xs text-fg-muted">{label}</div>
+      <div className="mt-0.5 font-display text-lg font-semibold tabular-nums text-fg">
+        {value}
+      </div>
+    </Card>
   );
 }
 
 function RoleBadge({ role, isAdmin }: { role: Role; isAdmin: boolean }) {
-  const map: Record<Role, string> = {
-    ORCH: "bg-violet-100 text-violet-900 dark:bg-violet-900 dark:text-violet-100",
-    POD_HEAD: "bg-sky-100 text-sky-900 dark:bg-sky-900 dark:text-sky-100",
-    AGENT: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+  const variant: Record<Role, "accent" | "info" | "neutral"> = {
+    ORCH: "accent",
+    POD_HEAD: "info",
+    AGENT: "neutral"
   };
   return (
     <span className="inline-flex items-center gap-1">
-      <span
-        className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${map[role]}`}
-      >
-        {role}
-      </span>
-      {isAdmin && (
-        <span className="inline-block rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-900 dark:text-amber-100">
-          admin
-        </span>
-      )}
+      <Badge variant={variant[role]}>{role}</Badge>
+      {isAdmin && <Badge variant="warning">admin</Badge>}
     </span>
-  );
-}
-
-function Alert({
-  tone,
-  children
-}: {
-  tone: "error" | "warn";
-  children: React.ReactNode;
-}) {
-  const classes =
-    tone === "error"
-      ? "border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100"
-      : "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100";
-  return (
-    <div className={`mt-4 rounded-md border px-4 py-3 text-sm ${classes}`}>
-      {children}
-    </div>
   );
 }
 

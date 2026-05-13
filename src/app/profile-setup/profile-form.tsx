@@ -1,6 +1,11 @@
 "use client";
 
 import { useActionState } from "react";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   saveProfile,
   type ProfileFormState
@@ -26,49 +31,41 @@ export function ProfileForm({ initial, showSkills, pitchMin, pitchMax }: Props) 
   const errors = state.errors ?? {};
 
   return (
-    <form action={formAction} className="mt-8 space-y-6">
+    <form action={formAction} className="space-y-6">
       <div>
-        <label className="block text-sm font-medium" htmlFor="bio">
-          Bio
-        </label>
-        <p className="mt-1 text-xs text-zinc-500">
+        <Label htmlFor="bio">Bio</Label>
+        <p className="mt-1 text-xs text-fg-muted">
           A short description of you. Up to 2000 characters.
         </p>
-        <textarea
+        <Textarea
           id="bio"
           name="bio"
           rows={4}
           defaultValue={values.bio}
           maxLength={2000}
-          className="mt-2 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+          className="mt-2"
         />
         {errors.bio ? (
-          <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-            {errors.bio}
-          </p>
+          <p className="mt-1 text-xs text-red-600">{errors.bio}</p>
         ) : null}
       </div>
 
       {showSkills ? (
         <div>
-          <label className="block text-sm font-medium" htmlFor="skills">
-            Skills
-          </label>
-          <p className="mt-1 text-xs text-zinc-500">
+          <Label htmlFor="skills">Skills</Label>
+          <p className="mt-1 text-xs text-fg-muted">
             Comma-separated. Up to 20 skills, 1–30 characters each.
           </p>
-          <input
+          <Input
             id="skills"
             name="skills"
             type="text"
             defaultValue={values.skills}
-            className="mt-2 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            className="mt-2"
             placeholder="TypeScript, React, Postgres"
           />
           {errors.skills ? (
-            <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-              {errors.skills}
-            </p>
+            <p className="mt-1 text-xs text-red-600">{errors.skills}</p>
           ) : null}
         </div>
       ) : (
@@ -76,13 +73,13 @@ export function ProfileForm({ initial, showSkills, pitchMin, pitchMax }: Props) 
       )}
 
       <div>
-        <label className="block text-sm font-medium" htmlFor="pitch">
-          Pitch <span className="text-red-600 dark:text-red-400">*</span>
-        </label>
-        <p className="mt-1 text-xs text-zinc-500">
+        <Label htmlFor="pitch">
+          Pitch <span className="text-red-600">*</span>
+        </Label>
+        <p className="mt-1 text-xs text-fg-muted">
           What makes you a great teammate? {pitchMin}–{pitchMax} characters.
         </p>
-        <textarea
+        <Textarea
           id="pitch"
           name="pitch"
           rows={6}
@@ -90,29 +87,19 @@ export function ProfileForm({ initial, showSkills, pitchMin, pitchMax }: Props) 
           minLength={pitchMin}
           maxLength={pitchMax}
           defaultValue={values.pitch}
-          className="mt-2 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+          className="mt-2"
         />
         {errors.pitch ? (
-          <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-            {errors.pitch}
-          </p>
+          <p className="mt-1 text-xs text-red-600">{errors.pitch}</p>
         ) : null}
       </div>
 
-      {errors.form ? (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
-          {errors.form}
-        </div>
-      ) : null}
+      {errors.form ? <Alert variant="danger">{errors.form}</Alert> : null}
 
       <div className="flex items-center justify-end">
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-zinc-900"
-        >
+        <Button type="submit" variant="accent" disabled={pending}>
           {pending ? "Saving…" : "Save profile"}
-        </button>
+        </Button>
       </div>
     </form>
   );

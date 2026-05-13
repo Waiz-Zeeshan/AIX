@@ -4,6 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { DragRankList, type RankItem } from "@/components/DragRankList";
 import { PitchCard } from "@/components/PitchCard";
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { savePodHeadOrchRankings } from "@/lib/preferences-actions";
 
 export interface OrchPoolItem {
@@ -100,14 +103,16 @@ export function RankOrchsClient({ pool, initialRanked, requiredCount }: Props) {
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
       <section>
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-medium">Available Orchs</h2>
-          <span className="text-xs text-zinc-500">
+          <h2 className="font-display text-base font-semibold text-fg">
+            Available Orchs
+          </h2>
+          <span className="text-xs text-fg-muted">
             {unranked.length} remaining
           </span>
         </div>
         <div className="mt-3 space-y-3">
           {unranked.length === 0 ? (
-            <p className="rounded-md border border-dashed border-zinc-300 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
+            <p className="rounded-md border border-dashed border-border-strong bg-surface-muted px-4 py-8 text-center text-sm text-fg-muted">
               All Orchs are ranked.
             </p>
           ) : (
@@ -120,13 +125,14 @@ export function RankOrchsClient({ pool, initialRanked, requiredCount }: Props) {
                 bio={o.bio}
                 pitch={o.pitch}
                 action={
-                  <button
+                  <Button
                     type="button"
                     onClick={() => addToRanking(o.id)}
-                    className="rounded-md border border-zinc-300 px-3 py-1 text-xs font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
+                    variant="accent"
+                    size="sm"
                   >
                     Add
-                  </button>
+                  </Button>
                 }
               />
             ))
@@ -136,12 +142,12 @@ export function RankOrchsClient({ pool, initialRanked, requiredCount }: Props) {
 
       <section>
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-medium">
+          <h2 className="font-display text-base font-semibold text-fg">
             Your ranking ({ranked.length}/{requiredCount})
           </h2>
           <SaveBadge status={status} />
         </div>
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="mt-1 text-xs text-fg-muted">
           Drag to reorder, or use Space/Enter + Arrow keys.
         </p>
         <div className="mt-3">
@@ -153,14 +159,14 @@ export function RankOrchsClient({ pool, initialRanked, requiredCount }: Props) {
           />
         </div>
         {errorMsg ? (
-          <p className="mt-3 text-xs text-red-600 dark:text-red-400">
+          <Alert variant="danger" className="mt-3 text-xs">
             {errorMsg}
-          </p>
+          </Alert>
         ) : null}
         {ranked.length !== requiredCount ? (
-          <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+          <Alert variant="warning" className="mt-3 text-xs">
             Rank all {requiredCount} Orchs before submitting.
-          </p>
+          </Alert>
         ) : null}
       </section>
     </div>
@@ -169,25 +175,13 @@ export function RankOrchsClient({ pool, initialRanked, requiredCount }: Props) {
 
 function SaveBadge({ status }: { status: SaveStatus }) {
   if (status === "saving") {
-    return (
-      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-        Saving…
-      </span>
-    );
+    return <Badge variant="neutral">Saving…</Badge>;
   }
   if (status === "saved") {
-    return (
-      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100">
-        Saved
-      </span>
-    );
+    return <Badge variant="success">Saved</Badge>;
   }
   if (status === "error") {
-    return (
-      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-900 dark:bg-red-900 dark:text-red-100">
-        Save failed
-      </span>
-    );
+    return <Badge variant="danger">Save failed</Badge>;
   }
   return null;
 }

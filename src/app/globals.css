@@ -1,29 +1,49 @@
 @import "tailwindcss";
 
-:root {
-  --background: 0 0% 100%;
-  --foreground: 222 47% 11%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;
-  --border: 214 32% 91%;
-  --primary: 222 47% 11%;
-  --primary-foreground: 210 40% 98%;
+@custom-variant dark (&:not(*));
+
+@theme {
+  --color-brand-midnight: #100020;
+  --color-brand-deep: #200040;
+  --color-brand-royal: #301060;
+  --color-brand-electric: #401080;
+  --color-brand-accent: #824adb;
+  --color-brand-accent-soft: #ede4fa;
+  --color-brand-banner: #303030;
+
+  --color-surface: #ffffff;
+  --color-surface-alt: #f0f0f0;
+  --color-surface-muted: #f7f7f9;
+
+  --color-fg: #18181b;
+  --color-fg-muted: #52525b;
+  --color-fg-subtle: #71717a;
+  --color-fg-invert: #ffffff;
+
+  --color-border-default: #e4e4e7;
+  --color-border-strong: #d4d4d8;
+
+  --font-sans: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: var(--font-space-grotesk), var(--font-inter), system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --border: 217 33% 17%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222 47% 11%;
-  }
+@utility bg-brand-hero {
+  background: linear-gradient(135deg, #100020 0%, #200040 35%, #301060 70%, #401080 100%);
+}
+
+@utility bg-brand-page-header {
+  background: linear-gradient(180deg, #200040 0%, #301060 100%);
+}
+
+@utility font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
 }
 
 body {
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

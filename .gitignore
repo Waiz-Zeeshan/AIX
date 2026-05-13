@@ -100,3 +100,4 @@ Desktop.ini
 *.local
 tmp/
 .tmp/
+.gstack/

@@ -1,8 +1,18 @@
-import Link from "next/link";
+import { AppFooter } from "@/components/chrome/AppFooter";
+import { AppHeader, type NavItem } from "@/components/chrome/AppHeader";
 import { requireAdmin } from "@/lib/permissions";
-import { signOut } from "@/auth";
 
 export const dynamic = "force-dynamic";
+
+const ADMIN_NAV: NavItem[] = [
+  { href: "/admin", label: "Dashboard" },
+  { href: "/admin/phases", label: "Phases" },
+  { href: "/admin/config", label: "Config" },
+  { href: "/admin/users", label: "Users" },
+  { href: "/admin/projects", label: "Projects" },
+  { href: "/admin/audit", label: "Audit" },
+  { href: "/admin/matching", label: "Matching" }
+];
 
 export default async function AdminLayout({
   children
@@ -12,72 +22,14 @@ export default async function AdminLayout({
   const user = await requireAdmin();
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-zinc-200 dark:border-zinc-800">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
-          <nav className="flex items-center gap-1 text-sm">
-            <Link
-              href="/admin"
-              className="rounded-md px-3 py-1.5 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-900"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/admin/phases"
-              className="rounded-md px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-900"
-            >
-              Phases
-            </Link>
-            <Link
-              href="/admin/config"
-              className="rounded-md px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-900"
-            >
-              Config
-            </Link>
-            <Link
-              href="/admin/users"
-              className="rounded-md px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-900"
-            >
-              Users
-            </Link>
-            <Link
-              href="/admin/projects"
-              className="rounded-md px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-900"
-            >
-              Projects
-            </Link>
-            <Link
-              href="/admin/audit"
-              className="rounded-md px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-900"
-            >
-              Audit
-            </Link>
-            <Link
-              href="/admin/matching"
-              className="rounded-md px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-900"
-            >
-              Matching
-            </Link>
-          </nav>
-          <div className="flex items-center gap-3 text-sm text-zinc-500">
-            <span>{user.email}</span>
-            <form
-              action={async () => {
-                "use server";
-                await signOut({ redirectTo: "/signin" });
-              }}
-            >
-              <button
-                type="submit"
-                className="rounded-md border border-zinc-300 px-3 py-1.5 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
-              >
-                Sign out
-              </button>
-            </form>
-          </div>
-        </div>
-      </header>
-      <div className="mx-auto max-w-5xl">{children}</div>
+    <div className="flex min-h-screen flex-col bg-surface">
+      <AppHeader
+        user={{ email: user.email }}
+        nav={ADMIN_NAV}
+        homeHref="/admin"
+      />
+      <div className="flex-1">{children}</div>
+      <AppFooter />
     </div>
   );
 }

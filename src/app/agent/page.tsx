@@ -7,9 +7,14 @@
  * state.
  */
 
-import { signOut } from "@/auth";
+import { AppFooter } from "@/components/chrome/AppFooter";
+import { AppHeader } from "@/components/chrome/AppHeader";
+import { PageHeader } from "@/components/chrome/PageHeader";
+import { SectionBanner } from "@/components/chrome/SectionBanner";
 import { PitchCard } from "@/components/PitchCard";
 import { TransparencyBadge } from "@/components/TransparencyBadge";
+import { Alert } from "@/components/ui/alert";
+import { Card, CardTitle } from "@/components/ui/card";
 import { getConfig } from "@/lib/config";
 import { db } from "@/lib/db";
 import { requireParticipant } from "@/lib/permissions";
@@ -39,41 +44,33 @@ export default async function AgentPage() {
   const preferencesOpen = preferencesPhase?.status === "OPEN";
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12">
-      <header className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Agent Dashboard
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            Welcome, {user.name} ({user.email})
-          </p>
-        </div>
-        <SignOut />
-      </header>
-
-      {resultsOpen ? (
-        <AgentResultsSection
-          userId={user.id}
-          podHeadRanksTopNAgents={config.podHeadRanksTopNAgents}
-        />
-      ) : preferencesOpen ? (
-        <AgentRankingSection
-          userId={user.id}
-          topN={config.agentRanksTopNPodHeads}
-        />
-      ) : (
-        <section className="mt-10 rounded-md border border-amber-200 bg-amber-50 px-4 py-6 dark:border-amber-900 dark:bg-amber-950">
-          <h2 className="text-lg font-medium text-amber-900 dark:text-amber-100">
-            Preferences are not open right now
-          </h2>
-          <p className="mt-2 text-sm text-amber-800 dark:text-amber-200">
+    <div className="min-h-screen bg-surface">
+      <AppHeader user={{ email: user.email }} />
+      <PageHeader
+        eyebrow="Agent"
+        title={resultsOpen ? "Your assignment" : "Agent dashboard"}
+        subtitle={`Welcome, ${user.name} — ${user.email}`}
+      />
+      <main className="mx-auto max-w-6xl px-6 py-10">
+        {resultsOpen ? (
+          <AgentResultsSection
+            userId={user.id}
+            podHeadRanksTopNAgents={config.podHeadRanksTopNAgents}
+          />
+        ) : preferencesOpen ? (
+          <AgentRankingSection
+            userId={user.id}
+            topN={config.agentRanksTopNPodHeads}
+          />
+        ) : (
+          <Alert variant="warning" title="Preferences are not open right now">
             Once the admin opens the PREFERENCES phase, you&rsquo;ll be able to
             browse the Pod Head pool and rank your top {config.agentRanksTopNPodHeads}.
-          </p>
-        </section>
-      )}
-    </main>
+          </Alert>
+        )}
+      </main>
+      <AppFooter />
+    </div>
   );
 }
 
@@ -88,28 +85,23 @@ async function AgentResultsSection({
 
   if (!results.assignedPodHead) {
     return (
-      <section className="mt-10 rounded-md border border-zinc-200 bg-zinc-50 px-4 py-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="text-lg font-medium">
-          Results haven&rsquo;t been finalized yet
-        </h2>
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-          Once the admin publishes results, your Pod Head, Orch, pod-mates, and
-          project assignments will appear here.
-        </p>
-      </section>
+      <Alert variant="neutral" title="Results haven't been finalized yet">
+        Once the admin publishes results, your Pod Head, Orch, pod-mates, and
+        project assignments will appear here.
+      </Alert>
     );
   }
 
   const { assignedPodHead, orchAbove, podMates, projects } = results;
 
   return (
-    <section className="mt-10 space-y-12">
-      <div>
-        <h2 className="text-lg font-medium">Your Pod Head</h2>
-        <p className="mt-1 text-sm text-zinc-500">
-          The Pod Head you&rsquo;ve been matched with for the event.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
+    <div className="space-y-12">
+      <section>
+        <SectionBanner
+          title="Your Pod Head"
+          subtitle="The Pod Head you've been matched with for the event."
+        />
+        <div className="mt-6 flex flex-wrap gap-2">
           {assignedPodHead.rankAchieved !== null ? (
             <TransparencyBadge
               variant="rank-achieved"
@@ -136,14 +128,14 @@ async function AgentResultsSection({
             pitch={assignedPodHead.pitch}
           />
         </div>
-      </div>
+      </section>
 
-      <div>
-        <h2 className="text-lg font-medium">Your Orch</h2>
-        <p className="mt-1 text-sm text-zinc-500">
-          The Orch overseeing your Pod Head&rsquo;s pod.
-        </p>
-        <div className="mt-4">
+      <section>
+        <SectionBanner
+          title="Your Orch"
+          subtitle="The Orch overseeing your Pod Head's pod."
+        />
+        <div className="mt-6">
           {orchAbove ? (
             <PitchCard
               name={orchAbove.name}
@@ -152,24 +144,26 @@ async function AgentResultsSection({
               pitch={orchAbove.pitch}
             />
           ) : (
-            <p className="rounded-md border border-dashed border-zinc-300 px-4 py-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
-              No Orch has been assigned to your Pod Head yet.
-            </p>
+            <Card variant="dashed-empty" padding="lg">
+              <p className="text-center text-sm">
+                No Orch has been assigned to your Pod Head yet.
+              </p>
+            </Card>
           )}
         </div>
-      </div>
+      </section>
 
-      <div>
-        <h2 className="text-lg font-medium">Your pod-mates</h2>
-        <p className="mt-1 text-sm text-zinc-500">
-          The other agents on your pod.
-        </p>
+      <section>
+        <SectionBanner
+          title="Your pod-mates"
+          subtitle="The other agents on your pod."
+        />
         {podMates.length === 0 ? (
-          <p className="mt-4 rounded-md border border-dashed border-zinc-300 px-4 py-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
-            No pod-mates assigned yet.
-          </p>
+          <Card variant="dashed-empty" padding="lg" className="mt-6">
+            <p className="text-center text-sm">No pod-mates assigned yet.</p>
+          </Card>
         ) : (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {podMates.map((mate) => (
               <PitchCard
                 key={mate.id}
@@ -183,48 +177,45 @@ async function AgentResultsSection({
             ))}
           </div>
         )}
-      </div>
+      </section>
 
-      <div>
-        <h2 className="text-lg font-medium">Your projects</h2>
-        <p className="mt-1 text-sm text-zinc-500">
-          The projects your pod will be working on.
-        </p>
+      <section>
+        <SectionBanner
+          title="Your projects"
+          subtitle="The projects your pod will be working on."
+        />
         {projects.length === 0 ? (
-          <p className="mt-4 rounded-md border border-dashed border-zinc-300 px-4 py-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
-            No projects have been assigned to your pod yet.
-          </p>
+          <Card variant="dashed-empty" padding="lg" className="mt-6">
+            <p className="text-center text-sm">
+              No projects have been assigned to your pod yet.
+            </p>
+          </Card>
         ) : (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {projects.map((project) => (
-              <article
-                key={project.id}
-                className="rounded-md border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
-              >
-                <h3 className="text-sm font-semibold tracking-tight">
-                  {project.title}
-                </h3>
+              <Card key={project.id}>
+                <CardTitle>{project.title}</CardTitle>
                 {project.tags.length > 0 ? (
                   <ul className="mt-2 flex flex-wrap gap-1.5">
                     {project.tags.map((tag) => (
                       <li
                         key={tag}
-                        className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+                        className="rounded-full bg-brand-accent-soft px-2 py-0.5 text-xs font-medium text-brand-electric"
                       >
                         {tag}
                       </li>
                     ))}
                   </ul>
                 ) : null}
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-fg">
                   {project.description}
                 </p>
-              </article>
+              </Card>
             ))}
           </div>
         )}
-      </div>
-    </section>
+      </section>
+    </div>
   );
 }
 
@@ -235,8 +226,6 @@ async function AgentRankingSection({
   userId: string;
   topN: number;
 }) {
-  // Ensure the agent has a profile row (the gate redirects to /profile-setup
-  // when the profile isn't complete, but a stray row could be missing).
   const agentProfile = await db.agentProfile.findUnique({
     where: { userId },
     select: {
@@ -248,8 +237,6 @@ async function AgentRankingSection({
     }
   });
 
-  // Fetch all 60 Pod Heads with their user names + emails. Sort by name for a
-  // stable browsing order.
   const podHeadRows = await db.podHeadProfile.findMany({
     select: {
       id: true,
@@ -272,18 +259,18 @@ async function AgentRankingSection({
 
   const initialRanking = agentProfile?.podHeadRankings.map((r) => r.podHeadId) ?? [];
 
-  // Read the User.preferencesSubmittedAt timestamp so a refresh keeps the
-  // "Submitted" stamp visible.
   const userRow = await db.user.findUnique({
     where: { id: userId },
     select: { preferencesSubmittedAt: true }
   });
 
   return (
-    <section className="mt-10">
+    <section>
       <div>
-        <h2 className="text-lg font-medium">Rank your top {topN} Pod Heads</h2>
-        <p className="mt-1 text-sm text-zinc-500">
+        <h2 className="font-display text-2xl font-bold tracking-tight text-fg">
+          Rank your top {topN} Pod Heads
+        </h2>
+        <p className="mt-2 text-sm text-fg-muted">
           Browse the {podHeads.length} Pod Heads, add your top {topN} to your
           ranking, then drag to order them. Rank 1 is your top pick. Your
           ranking auto-saves; click Submit when you&rsquo;re happy.
@@ -291,42 +278,28 @@ async function AgentRankingSection({
       </div>
 
       {podHeads.length === 0 ? (
-        <div className="mt-8 rounded-md border border-dashed border-zinc-300 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
-          The Pod Head pool isn&rsquo;t populated yet. Check back once the admin
-          has imported participants.
-        </div>
+        <Card variant="dashed-empty" padding="lg" className="mt-8">
+          <p className="text-center text-sm">
+            The Pod Head pool isn&rsquo;t populated yet. Check back once the
+            admin has imported participants.
+          </p>
+        </Card>
       ) : (
-        <AgentRankPicker
-          podHeads={podHeads}
-          initialRanking={initialRanking}
-          maxRanks={topN}
-          initialSubmittedAt={
-            userRow?.preferencesSubmittedAt
-              ? userRow.preferencesSubmittedAt.toISOString()
-              : null
-          }
-          saveAction={saveAgentRankingsAction}
-          submitAction={submitPreferencesAction}
-        />
+        <div className="mt-8">
+          <AgentRankPicker
+            podHeads={podHeads}
+            initialRanking={initialRanking}
+            maxRanks={topN}
+            initialSubmittedAt={
+              userRow?.preferencesSubmittedAt
+                ? userRow.preferencesSubmittedAt.toISOString()
+                : null
+            }
+            saveAction={saveAgentRankingsAction}
+            submitAction={submitPreferencesAction}
+          />
+        </div>
       )}
     </section>
-  );
-}
-
-function SignOut() {
-  return (
-    <form
-      action={async () => {
-        "use server";
-        await signOut({ redirectTo: "/signin" });
-      }}
-    >
-      <button
-        type="submit"
-        className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
-      >
-        Sign out
-      </button>
-    </form>
   );
 }

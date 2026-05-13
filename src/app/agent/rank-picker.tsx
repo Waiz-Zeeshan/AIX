@@ -20,6 +20,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { DragRankList, type RankItem } from "@/components/DragRankList";
 import { PitchCard } from "@/components/PitchCard";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 import type { ActionResult, SubmitResult } from "./actions";
 
@@ -222,14 +225,14 @@ export function AgentRankPicker({
     : "Submit preferences";
 
   return (
-    <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
       {/* Pool */}
       <section aria-labelledby="pool-heading">
         <div className="flex items-baseline justify-between gap-4">
-          <h2 id="pool-heading" className="text-lg font-medium">
+          <h2 id="pool-heading" className="font-display text-lg font-semibold text-fg">
             Pod Head pool
           </h2>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-fg-muted">
             {filtered.length} of {podHeads.length - inRanking.size} matching
           </p>
         </div>
@@ -237,24 +240,23 @@ export function AgentRankPicker({
           <label htmlFor="pod-head-search" className="sr-only">
             Search Pod Heads
           </label>
-          <input
+          <Input
             id="pod-head-search"
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name, skill, or pitch…"
-            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
 
         {atCapacity ? (
-          <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+          <Alert variant="warning" className="mt-3 text-xs">
             You&rsquo;ve picked {maxRanks} Pod Heads. Remove one to add another.
-          </p>
+          </Alert>
         ) : null}
 
         {filtered.length === 0 ? (
-          <div className="mt-4 rounded-md border border-dashed border-zinc-300 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
+          <div className="mt-4 rounded-md border border-dashed border-border-strong bg-surface-muted px-4 py-8 text-center text-sm text-fg-muted">
             {normalizedSearch
               ? "No Pod Heads match your search."
               : podHeads.length - inRanking.size === 0
@@ -273,15 +275,16 @@ export function AgentRankPicker({
                   pitch={p.pitch}
                   email={p.email}
                   action={
-                    <button
+                    <Button
                       type="button"
                       onClick={() => handleAdd(p.id)}
                       disabled={atCapacity}
                       aria-label={`Add ${p.name} to your ranking`}
-                      className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+                      variant="accent"
+                      size="sm"
                     >
                       Add
-                    </button>
+                    </Button>
                   }
                 />
               </li>
@@ -293,14 +296,14 @@ export function AgentRankPicker({
       {/* Ranking */}
       <aside aria-labelledby="ranking-heading" className="lg:sticky lg:top-6 lg:self-start">
         <div className="flex items-baseline justify-between gap-4">
-          <h2 id="ranking-heading" className="text-lg font-medium">
+          <h2 id="ranking-heading" className="font-display text-lg font-semibold text-fg">
             Your ranking
           </h2>
-          <p className="text-xs font-mono tabular-nums text-zinc-500">
+          <p className="font-display text-xs font-semibold tabular-nums text-brand-accent">
             {ranking.length}/{maxRanks}
           </p>
         </div>
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="mt-1 text-xs text-fg-muted">
           Drag rows (or use Space + arrow keys) to reorder. Rank 1 is your top pick.
         </p>
 
@@ -318,24 +321,26 @@ export function AgentRankPicker({
         </div>
 
         <div className="mt-4 space-y-2">
-          <button
+          <Button
             type="button"
             onClick={handleSubmit}
             disabled={!submitReady || isSubmitting || (Boolean(submittedAt) && !dirtySinceSubmit)}
-            className="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+            variant="accent"
+            size="lg"
+            className="w-full"
           >
             {isSubmitting ? "Submitting…" : submitLabel}
-          </button>
+          </Button>
 
           {submittedAt ? (
-            <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100">
+            <Alert variant="success" className="text-xs">
               Preferences submitted at {formatTime(submittedAt)}.
               {dirtySinceSubmit
                 ? " You have unsaved changes since then — submit again to re-stamp."
                 : ""}
-            </p>
+            </Alert>
           ) : (
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-fg-muted">
               {submitReady
                 ? "Ready to submit."
                 : `Pick ${maxRanks - ranking.length} more Pod Head${maxRanks - ranking.length === 1 ? "" : "s"} to enable submit.`}
@@ -343,9 +348,9 @@ export function AgentRankPicker({
           )}
 
           {submitMessage ? (
-            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+            <Alert variant="danger" className="text-xs">
               {submitMessage}
-            </p>
+            </Alert>
           ) : null}
         </div>
       </aside>
@@ -361,19 +366,17 @@ function SaveIndicator({
   pendingPartial: boolean;
 }) {
   if (status.kind === "saving") {
-    return <span className="text-zinc-500">Saving…</span>;
+    return <span className="text-fg-muted">Saving…</span>;
   }
   if (status.kind === "saved") {
-    return <span className="text-emerald-700 dark:text-emerald-300">Saved</span>;
+    return <span className="font-medium text-emerald-700">Saved</span>;
   }
   if (status.kind === "error") {
-    return (
-      <span className="text-red-700 dark:text-red-300">{status.message}</span>
-    );
+    return <span className="font-medium text-red-700">{status.message}</span>;
   }
   if (pendingPartial) {
     return (
-      <span className="text-zinc-500">
+      <span className="text-fg-muted">
         Draft — saves when you reach the full count.
       </span>
     );

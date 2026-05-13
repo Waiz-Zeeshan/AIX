@@ -6,13 +6,18 @@
  * interactive picker is the only `'use client'` boundary on this route.
  */
 
-import { requireParticipant } from "@/lib/permissions";
-import { signOut } from "@/auth";
-import { db } from "@/lib/db";
-import { getConfig } from "@/lib/config";
-import { getOrchResults, type OrchPodHeadEntry } from "@/lib/results";
+import { AppFooter } from "@/components/chrome/AppFooter";
+import { AppHeader } from "@/components/chrome/AppHeader";
+import { PageHeader } from "@/components/chrome/PageHeader";
+import { SectionBanner } from "@/components/chrome/SectionBanner";
 import { PitchCard } from "@/components/PitchCard";
 import { TransparencyBadge } from "@/components/TransparencyBadge";
+import { Alert } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { getConfig } from "@/lib/config";
+import { db } from "@/lib/db";
+import { requireParticipant } from "@/lib/permissions";
+import { getOrchResults, type OrchPodHeadEntry } from "@/lib/results";
 
 import { OrchRankPicker, type PodHeadOption } from "./OrchRankPicker";
 
@@ -31,46 +36,33 @@ export default async function OrchPage() {
   const isOpen = preferencesPhase?.status === "OPEN";
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12">
-      <header className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Orch Dashboard
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            Welcome, {user.name} ({user.email})
-          </p>
-        </div>
-        <form
-          action={async () => {
-            "use server";
-            await signOut({ redirectTo: "/signin" });
-          }}
-        >
-          <button
-            type="submit"
-            className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
-          >
-            Sign out
-          </button>
-        </form>
-      </header>
-
-      {resultsOpen ? (
-        <OrchResultsView
-          orchUserId={user.id}
-          podHeadsPerOrch={config.podHeadsPerOrch}
-          orchCount={config.orchCount}
-        />
-      ) : isOpen ? (
-        <OrchPreferences orchUserId={user.id} targetCount={config.podHeadsPerOrch} />
-      ) : (
-        <section className="mt-10 rounded-md border border-zinc-200 bg-zinc-50 px-4 py-6 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
-          Preferences are not open right now. Check back when the admin opens
-          the preference window.
-        </section>
-      )}
-    </main>
+    <div className="min-h-screen bg-surface">
+      <AppHeader user={{ email: user.email }} />
+      <PageHeader
+        eyebrow="Orch"
+        title={resultsOpen ? "Your Pod Heads" : "Orch dashboard"}
+        subtitle={`Welcome, ${user.name} — ${user.email}`}
+      />
+      <main className="mx-auto max-w-6xl px-6 py-10">
+        {resultsOpen ? (
+          <OrchResultsView
+            orchUserId={user.id}
+            podHeadsPerOrch={config.podHeadsPerOrch}
+            orchCount={config.orchCount}
+          />
+        ) : isOpen ? (
+          <OrchPreferences
+            orchUserId={user.id}
+            targetCount={config.podHeadsPerOrch}
+          />
+        ) : (
+          <Alert variant="warning" title="Preferences are not open right now">
+            Check back when the admin opens the preference window.
+          </Alert>
+        )}
+      </main>
+      <AppFooter />
+    </div>
   );
 }
 
@@ -87,25 +79,22 @@ async function OrchResultsView({
 
   if (results.assignedPodHeads.length === 0) {
     return (
-      <section className="mt-10 rounded-md border border-zinc-200 bg-zinc-50 px-4 py-6 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
-        Results haven&rsquo;t been finalized yet. Check back once the admin
-        publishes the final assignments.
-      </section>
+      <Alert variant="neutral" title="Results haven't been finalized yet">
+        Check back once the admin publishes the final assignments.
+      </Alert>
     );
   }
 
   return (
-    <section className="mt-10">
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold tracking-tight">Your Pod Heads</h2>
-        <p className="mt-1 text-sm text-zinc-500">
-          {results.assignedPodHeads.length} Pod Head
-          {results.assignedPodHeads.length === 1 ? "" : "s"} assigned. Expand
-          each one to see their pod of agents and projects.
-        </p>
-      </div>
+    <section>
+      <SectionBanner
+        title="Your Pod Heads"
+        subtitle={`${results.assignedPodHeads.length} Pod Head${
+          results.assignedPodHeads.length === 1 ? "" : "s"
+        } assigned. Expand each one to see their pod of agents and projects.`}
+      />
 
-      <ul className="grid gap-4">
+      <ul className="mt-8 grid gap-4">
         {results.assignedPodHeads.map((ph) => (
           <li key={ph.id}>
             <OrchPodHeadCard
@@ -130,7 +119,7 @@ function OrchPodHeadCard({
   orchCount: number;
 }) {
   return (
-    <div className="rounded-md border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+    <Card>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {podHead.autoGenerated ? (
           <TransparencyBadge variant="auto-assigned" />
@@ -164,7 +153,7 @@ function OrchPodHeadCard({
       />
 
       <details className="mt-3 group">
-        <summary className="cursor-pointer text-xs font-medium text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100">
+        <summary className="cursor-pointer text-xs font-medium text-brand-accent hover:underline">
           View pod ({podHead.agents.length} agent
           {podHead.agents.length === 1 ? "" : "s"}, {podHead.projects.length}{" "}
           project{podHead.projects.length === 1 ? "" : "s"})
@@ -172,18 +161,21 @@ function OrchPodHeadCard({
 
         <div className="mt-3 grid gap-4 md:grid-cols-2">
           <div>
-            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            <h4 className="mb-2 font-display text-xs font-semibold uppercase tracking-wide text-fg-muted">
               Agents
             </h4>
             {podHead.agents.length === 0 ? (
-              <p className="text-xs text-zinc-500">No agents assigned.</p>
+              <p className="text-xs text-fg-muted">No agents assigned.</p>
             ) : (
-              <ul className="list-disc space-y-1 pl-5 text-sm text-zinc-800 dark:text-zinc-200">
+              <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
                 {podHead.agents.map((a) => (
                   <li key={a.id}>
                     <span className="font-medium">{a.name}</span>
                     {a.skills.length > 0 ? (
-                      <span className="text-zinc-500"> &mdash; {a.skills.join(", ")}</span>
+                      <span className="text-fg-muted">
+                        {" "}
+                        &mdash; {a.skills.join(", ")}
+                      </span>
                     ) : null}
                   </li>
                 ))}
@@ -192,18 +184,21 @@ function OrchPodHeadCard({
           </div>
 
           <div>
-            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            <h4 className="mb-2 font-display text-xs font-semibold uppercase tracking-wide text-fg-muted">
               Projects
             </h4>
             {podHead.projects.length === 0 ? (
-              <p className="text-xs text-zinc-500">No projects assigned.</p>
+              <p className="text-xs text-fg-muted">No projects assigned.</p>
             ) : (
-              <ul className="list-disc space-y-1 pl-5 text-sm text-zinc-800 dark:text-zinc-200">
+              <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
                 {podHead.projects.map((p) => (
                   <li key={p.id}>
                     <span className="font-medium">{p.title}</span>
                     {p.tags.length > 0 ? (
-                      <span className="text-zinc-500"> &mdash; {p.tags.join(", ")}</span>
+                      <span className="text-fg-muted">
+                        {" "}
+                        &mdash; {p.tags.join(", ")}
+                      </span>
                     ) : null}
                   </li>
                 ))}
@@ -212,7 +207,7 @@ function OrchPodHeadCard({
           </div>
         </div>
       </details>
-    </div>
+    </Card>
   );
 }
 
@@ -223,7 +218,6 @@ async function OrchPreferences({
   orchUserId: string;
   targetCount: number;
 }) {
-  // The Orch's own profile row — needed to read existing selections.
   const orch = await db.orchProfile.findUnique({
     where: { userId: orchUserId },
     select: {
@@ -254,9 +248,9 @@ async function OrchPreferences({
     pitch: ph.pitch
   }));
 
-  const initialSelectedIds = orch?.podHeadSelections.map((s) => s.podHeadId) ?? [];
+  const initialSelectedIds =
+    orch?.podHeadSelections.map((s) => s.podHeadId) ?? [];
 
-  // The User.preferencesSubmittedAt timestamp drives the "Submitted on…" copy.
   const userRecord = await db.user.findUnique({
     where: { id: orchUserId },
     select: { preferencesSubmittedAt: true }
