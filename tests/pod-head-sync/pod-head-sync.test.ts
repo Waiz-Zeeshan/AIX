@@ -119,6 +119,120 @@ describe("splitNameAndEmpId", () => {
   });
 });
 
+describe("planPodHeadSync — standalone EMP ID column", () => {
+  // The live operator sheet has SIX columns: email | Name (bare) | EMP ID
+  // (just the number) | Name with EMP ID (combined) | Phone | Department.
+  // The bare "Name" column has no dash, so empId can only come from either
+  // the standalone EMP ID column or the combined cell.
+  const SIX_COL_HEADER = [
+    "Email Address",
+    "Name",
+    "EMP ID",
+    "Name with EMP ID",
+    "Phone Number",
+    "Department"
+  ];
+
+  function sixColRow(over: Partial<Record<number, string>> = {}): string[] {
+    const r = [
+      "ameer.aftab@tkxel.io",
+      "Abdullah Ameer Aftab",
+      "2499",
+      "Abdullah Ameer Aftab - 2499",
+      "03454803384",
+      "Engineering"
+    ];
+    for (const [k, v] of Object.entries(over)) {
+      r[Number(k)] = v ?? "";
+    }
+    return r;
+  }
+
+  it("reads empId from the standalone EMP ID column when present", () => {
+    const plan = planPodHeadSync({ ...BASE, rows: [SIX_COL_HEADER, sixColRow()] });
+    const o = plan.outcomes[0];
+    if (o.kind === "skip") throw new Error("expected create");
+    expect(o.name).toBe("Abdullah Ameer Aftab");
+    expect(o.empId).toBe("2499");
+  });
+
+  it("reads empId from the standalone column even when the name cell has no dash", () => {
+    // Name column has no dash; without the standalone column, empId would be null.
+    const plan = planPodHeadSync({
+      ...BASE,
+      rows: [
+        SIX_COL_HEADER,
+        sixColRow({ 3: "" }) // drop the combined column's value
+      ]
+    });
+    const o = plan.outcomes[0];
+    if (o.kind === "skip") throw new Error("expected create");
+    expect(o.empId).toBe("2499");
+  });
+
+  it("falls back to the combined Name-with-EMP-ID cell when no standalone column", () => {
+    // 4-column sheet, no separate EMP ID column.
+    const plan = planPodHeadSync({ ...BASE, rows: [LIVE_HEADER, row()] });
+    const o = plan.outcomes[0];
+    if (o.kind === "skip") throw new Error("expected create");
+    expect(o.empId).toBe("2499");
+  });
+
+  it("standalone column wins over the combined cell when both exist", () => {
+    const plan = planPodHeadSync({
+      ...BASE,
+      rows: [
+        SIX_COL_HEADER,
+        sixColRow({ 2: "9999", 3: "Abdullah Ameer Aftab - 1111" })
+      ]
+    });
+    const o = plan.outcomes[0];
+    if (o.kind === "skip") throw new Error("expected create");
+    expect(o.empId).toBe("9999");
+  });
+
+  it("tolerates non-digit characters in the standalone column", () => {
+    const plan = planPodHeadSync({
+      ...BASE,
+      rows: [SIX_COL_HEADER, sixColRow({ 2: "EMP-2499" })]
+    });
+    const o = plan.outcomes[0];
+    if (o.kind === "skip") throw new Error("expected create");
+    expect(o.empId).toBe("2499");
+  });
+
+  it("accepts 'Employee ID' as the standalone header", () => {
+    const header = [
+      "Email Address",
+      "Name",
+      "Employee ID",
+      "Phone Number",
+      "Department"
+    ];
+    const row5 = [
+      "ameer.aftab@tkxel.io",
+      "Abdullah Ameer Aftab",
+      "2499",
+      "03454803384",
+      "Engineering"
+    ];
+    const plan = planPodHeadSync({ ...BASE, rows: [header, row5] });
+    const o = plan.outcomes[0];
+    if (o.kind === "skip") throw new Error("expected create");
+    expect(o.empId).toBe("2499");
+  });
+
+  it("leaves empId null when both standalone column and combined cell are blank", () => {
+    const plan = planPodHeadSync({
+      ...BASE,
+      rows: [SIX_COL_HEADER, sixColRow({ 2: "", 3: "" })]
+    });
+    const o = plan.outcomes[0];
+    if (o.kind === "skip") throw new Error("expected create");
+    expect(o.empId).toBeNull();
+  });
+});
+
 describe("planPodHeadSync — header detection", () => {
   it("parses the live Pod-Head header", () => {
     const plan = planPodHeadSync({ ...BASE, rows: [LIVE_HEADER, row()] });
