@@ -2,7 +2,14 @@
 
 import { useState, useTransition } from "react";
 
-import type { RowOutcome } from "@/lib/agent-sync";
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import {
+  SYNC_ISSUE_DUPLICATE_POD_HEADS,
+  type RowOutcome
+} from "@/lib/agent-sync";
 
 import { applyAgentSync, previewAgentSync } from "./actions";
 import type { AgentSyncState } from "./types";
@@ -38,49 +45,54 @@ export function SyncPanel({
   };
 
   return (
-    <section className="mt-8 rounded-md border border-zinc-200 p-6 dark:border-zinc-800">
+    <section className="mt-8 rounded-lg border border-border-default bg-surface p-6">
       <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
         <Field label="Configured sheet">
           {sheetSpec ? (
-            <code className="break-all font-mono text-xs">{sheetSpec}</code>
+            <code className="break-all font-mono text-xs text-fg">
+              {sheetSpec}
+            </code>
           ) : (
-            <span className="text-zinc-500">none</span>
+            <span className="text-fg-muted">none</span>
           )}
         </Field>
         <Field label="Top-N Pod Heads per agent">
-          <span className="font-mono">{topN}</span>
+          <span className="font-mono text-fg">{topN}</span>
         </Field>
       </div>
 
       <div className="mt-6 flex gap-3">
-        <button
+        <Button
           type="button"
           onClick={runPreview}
           disabled={disabled || pending}
-          className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+          variant="secondary"
         >
           {pending && state.status !== "previewed" && state.status !== "applied"
             ? "Working…"
             : "Preview"}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={runApply}
           disabled={
             disabled ||
             pending ||
-            !(state.status === "previewed" && state.plan.summary.creates + state.plan.summary.updates > 0)
+            !(
+              state.status === "previewed" &&
+              state.plan.summary.creates + state.plan.summary.updates > 0
+            )
           }
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+          variant="accent"
         >
           Apply
-        </button>
+        </Button>
       </div>
 
       {state.status === "error" && (
-        <div className="mt-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
+        <Alert variant="danger" className="mt-6">
           {state.message}
-        </div>
+        </Alert>
       )}
 
       {(state.status === "previewed" || state.status === "applied") && (
@@ -98,7 +110,7 @@ function SyncResult({
   const plan = state.plan;
   return (
     <div className="mt-6 space-y-4">
-      <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
         <Stat label="Rows scanned" value={plan.summary.rowsTotal} />
         {state.status === "previewed" ? (
           <>
@@ -113,25 +125,26 @@ function SyncResult({
             <Stat label="Skipped" value={state.applied.skipped} />
           </>
         )}
+        <Stat label="Duplicate Pod Heads" value={plan.summary.duplicates} />
       </div>
 
       {plan.warnings.length > 0 && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-          <div className="font-medium">Header warnings</div>
+        <Alert variant="warning" title="Header warnings">
           <ul className="mt-1 list-disc pl-5 text-xs">
             {plan.warnings.map((w, i) => (
               <li key={i}>{w}</li>
             ))}
           </ul>
-        </div>
+        </Alert>
       )}
 
-      {state.status === "applied" && state.applied.failedRowIndexes.length > 0 && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
-          {state.applied.failedRowIndexes.length} row(s) failed to write:{" "}
-          {state.applied.failedRowIndexes.join(", ")}. Check server logs.
-        </div>
-      )}
+      {state.status === "applied" &&
+        state.applied.failedRowIndexes.length > 0 && (
+          <Alert variant="danger">
+            {state.applied.failedRowIndexes.length} row(s) failed to write:{" "}
+            {state.applied.failedRowIndexes.join(", ")}. Check server logs.
+          </Alert>
+        )}
 
       <PlanTable outcomes={plan.outcomes} />
     </div>
@@ -140,9 +153,9 @@ function SyncResult({
 
 function PlanTable({ outcomes }: { outcomes: RowOutcome[] }) {
   return (
-    <div className="overflow-x-auto rounded-md border border-zinc-200 dark:border-zinc-800">
+    <div className="overflow-x-auto rounded-lg border border-border-default bg-surface">
       <table className="min-w-full text-sm">
-        <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wider text-zinc-500 dark:bg-zinc-900">
+        <thead className="bg-surface-alt text-left font-display text-xs uppercase tracking-wider text-fg-muted">
           <tr>
             <th className="px-3 py-2">Row</th>
             <th className="px-3 py-2">Outcome</th>
@@ -150,26 +163,32 @@ function PlanTable({ outcomes }: { outcomes: RowOutcome[] }) {
             <th className="px-3 py-2">Notes</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+        <tbody className="divide-y divide-border-default">
           {outcomes.map((o) => (
             <tr key={`${o.rowIndex}-${o.email ?? "blank"}`}>
-              <td className="px-3 py-2 font-mono text-xs text-zinc-500">
+              <td className="px-3 py-2 font-mono text-xs text-fg-muted">
                 {o.rowIndex}
               </td>
               <td className="px-3 py-2">
-                <OutcomeBadge kind={o.kind} />
+                <div className="flex flex-wrap gap-1">
+                  <OutcomeBadge kind={o.kind} />
+                  {o.kind !== "skip" &&
+                    o.flags.includes(SYNC_ISSUE_DUPLICATE_POD_HEADS) && (
+                      <Badge variant="warning">Duplicate Pod Heads</Badge>
+                    )}
+                </div>
               </td>
-              <td className="px-3 py-2 font-mono text-xs">
+              <td className="px-3 py-2 font-mono text-xs text-fg">
                 {o.email ?? "(blank)"}
               </td>
-              <td className="px-3 py-2 text-xs text-zinc-600 dark:text-zinc-400">
+              <td className="px-3 py-2 text-xs text-fg-muted">
                 {o.kind === "skip" ? (
                   o.reason
                 ) : (
                   <>
                     {o.name} — {o.rankings.length} rankings
                     {o.preferredDomains.length > 0 && (
-                      <span className="ml-2 text-zinc-500">
+                      <span className="ml-2 text-fg-muted">
                         · domains: {o.preferredDomains.join(", ")}
                       </span>
                     )}
@@ -185,27 +204,19 @@ function PlanTable({ outcomes }: { outcomes: RowOutcome[] }) {
 }
 
 function OutcomeBadge({ kind }: { kind: "create" | "update" | "skip" }) {
-  const map = {
-    create:
-      "bg-emerald-100 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100",
-    update: "bg-sky-100 text-sky-900 dark:bg-sky-900 dark:text-sky-100",
-    skip: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-  } as const;
-  return (
-    <span
-      className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${map[kind]}`}
-    >
-      {kind}
-    </span>
-  );
+  if (kind === "create") return <Badge variant="success">create</Badge>;
+  if (kind === "update") return <Badge variant="info">update</Badge>;
+  return <Badge variant="neutral">skip</Badge>;
 }
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-md border border-zinc-200 px-3 py-2 dark:border-zinc-800">
-      <div className="text-xs text-zinc-500">{label}</div>
-      <div className="mt-0.5 text-lg font-semibold tabular-nums">{value}</div>
-    </div>
+    <Card padding="sm">
+      <div className="text-xs text-fg-muted">{label}</div>
+      <div className="mt-0.5 font-display text-lg font-semibold tabular-nums text-fg">
+        {value}
+      </div>
+    </Card>
   );
 }
 
@@ -218,7 +229,7 @@ function Field({
 }) {
   return (
     <div>
-      <div className="text-xs uppercase tracking-wider text-zinc-500">
+      <div className="text-xs uppercase tracking-wider text-fg-muted">
         {label}
       </div>
       <div className="mt-1">{children}</div>

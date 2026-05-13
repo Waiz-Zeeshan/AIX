@@ -2,9 +2,13 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { EventPhase, PhaseName } from "@prisma/client";
 
-import { requireAdmin } from "@/lib/permissions";
-import { db } from "@/lib/db";
+import { PageHeader } from "@/components/chrome/PageHeader";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { logAudit } from "@/lib/audit";
+import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/permissions";
+
 import { ConfirmForm } from "./confirm-form";
 
 export const dynamic = "force-dynamic";
@@ -132,96 +136,89 @@ export default async function AdminPhasesPage() {
   };
 
   return (
-    <main className="px-6 py-10">
-      <h1 className="text-3xl font-semibold tracking-tight">Phase Control</h1>
-      <p className="mt-2 text-sm text-zinc-500">
-        Open and close event phases. Phases progress sequentially:
-        Registration → Preferences → Matching → Results Published.
-      </p>
-
-      <ul className="mt-8 divide-y rounded-md border border-zinc-200 dark:border-zinc-800">
-        {phases.map((p) => (
-          <li
-            key={p.name}
-            className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-3">
-                <span className="font-medium">{PHASE_LABELS[p.name]}</span>
-                <StatusBadge status={p.status} />
+    <>
+      <PageHeader
+        eyebrow="Admin"
+        title="Phase Control"
+        subtitle="Open and close event phases. Phases progress sequentially: Registration → Preferences → Matching → Results Published."
+      />
+      <main className="mx-auto max-w-5xl px-6 py-10">
+        <ul className="divide-y divide-border-default overflow-hidden rounded-lg border border-border-default bg-surface">
+          {phases.map((p) => (
+            <li
+              key={p.name}
+              className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-3">
+                  <span className="font-display font-semibold text-fg">
+                    {PHASE_LABELS[p.name]}
+                  </span>
+                  <StatusBadge status={p.status} />
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-fg-muted">
+                  <span>
+                    Opened: <Time value={p.openedAt} />
+                  </span>
+                  <span>
+                    Closed: <Time value={p.closedAt} />
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-zinc-500">
-                <span>
-                  Opened: <Time value={p.openedAt} />
-                </span>
-                <span>
-                  Closed: <Time value={p.closedAt} />
-                </span>
-              </div>
-            </div>
 
-            <div className="flex items-center gap-2">
-              {p.status === "LOCKED" && (
-                <ConfirmForm action={openPhase} phase={p.name}>
-                  <button
-                    type="submit"
-                    disabled={!canOpen(p.name)}
-                    className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300 dark:disabled:bg-zinc-800 dark:disabled:text-zinc-600"
+              <div className="flex items-center gap-2">
+                {p.status === "LOCKED" && (
+                  <ConfirmForm action={openPhase} phase={p.name}>
+                    <Button
+                      type="submit"
+                      disabled={!canOpen(p.name)}
+                      variant="accent"
+                      size="sm"
+                    >
+                      Open
+                    </Button>
+                  </ConfirmForm>
+                )}
+                {p.status === "OPEN" && (
+                  <ConfirmForm action={closePhase} phase={p.name}>
+                    <Button type="submit" variant="secondary" size="sm">
+                      Close
+                    </Button>
+                  </ConfirmForm>
+                )}
+                {p.status === "CLOSED" && (
+                  <ConfirmForm
+                    action={reopenPhase}
+                    phase={p.name}
+                    confirmMessage={`Re-opening ${PHASE_LABELS[p.name]} allows late changes. Confirm?`}
                   >
-                    Open
-                  </button>
-                </ConfirmForm>
-              )}
-              {p.status === "OPEN" && (
-                <ConfirmForm action={closePhase} phase={p.name}>
-                  <button
-                    type="submit"
-                    className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
-                  >
-                    Close
-                  </button>
-                </ConfirmForm>
-              )}
-              {p.status === "CLOSED" && (
-                <ConfirmForm
-                  action={reopenPhase}
-                  phase={p.name}
-                  confirmMessage={`Re-opening ${PHASE_LABELS[p.name]} allows late changes. Confirm?`}
-                >
-                  <button
-                    type="submit"
-                    className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100 dark:hover:bg-amber-900"
-                  >
-                    Re-open
-                  </button>
-                </ConfirmForm>
-              )}
-            </div>
-          </li>
-        ))}
-      </ul>
-    </main>
+                    <Button
+                      type="submit"
+                      className="border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"
+                      variant="secondary"
+                      size="sm"
+                    >
+                      Re-open
+                    </Button>
+                  </ConfirmForm>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </main>
+    </>
   );
 }
 
 function StatusBadge({ status }: { status: EventPhase["status"] }) {
-  const cls =
-    status === "OPEN"
-      ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100"
-      : status === "CLOSED"
-      ? "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-      : "bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100";
-  return (
-    <span
-      className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}
-    >
-      {status}
-    </span>
-  );
+  if (status === "OPEN") return <Badge variant="success">{status}</Badge>;
+  if (status === "CLOSED") return <Badge variant="neutral">{status}</Badge>;
+  return <Badge variant="warning">{status}</Badge>;
 }
 
 function Time({ value }: { value: Date | null }) {
-  if (!value) return <span className="text-zinc-400">—</span>;
+  if (!value) return <span className="text-fg-subtle">—</span>;
   return (
     <time dateTime={value.toISOString()} className="font-mono">
       {value.toISOString().replace("T", " ").slice(0, 19)}Z

@@ -54,17 +54,15 @@ export function DragRankList({
 }: DragRankListProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
-  // Keyboard-grabbed item id (null when nothing is held).
   const [grabbedId, setGrabbedId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const rowRefs = useRef<Map<string, HTMLLIElement | null>>(new Map());
 
   const announce = useCallback((msg: string) => {
-    setAnnouncement(""); // reset so the same message re-announces
+    setAnnouncement("");
     requestAnimationFrame(() => setAnnouncement(msg));
   }, []);
 
-  // Keep focus on the grabbed item across re-renders so arrow keys keep working.
   useEffect(() => {
     if (!grabbedId) return;
     rowRefs.current.get(grabbedId)?.focus();
@@ -72,7 +70,7 @@ export function DragRankList({
 
   if (items.length === 0) {
     return (
-      <div className="rounded-md border border-dashed border-zinc-300 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
+      <div className="rounded-md border border-dashed border-border-strong bg-surface-muted px-4 py-8 text-center text-sm text-fg-muted">
         {emptyMessage}
       </div>
     );
@@ -168,27 +166,27 @@ export function DragRankList({
               onDragEnd={handleDragEnd}
               onKeyDown={(e) => handleKeyDown(e, index)}
               className={[
-                "flex items-start gap-3 rounded-md border bg-white px-3 py-2 outline-none transition dark:bg-zinc-950",
+                "flex items-start gap-3 rounded-md border bg-surface px-3 py-2 outline-none transition",
                 isGrabbed
-                  ? "border-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-900"
+                  ? "border-brand-accent ring-2 ring-brand-accent/30"
                   : isHoverTarget
-                    ? "border-zinc-400 dark:border-zinc-500"
-                    : "border-zinc-200 dark:border-zinc-800",
-                disabled ? "cursor-not-allowed opacity-60" : "cursor-grab focus:ring-2 focus:ring-zinc-400"
+                    ? "border-border-strong"
+                    : "border-border-default",
+                disabled
+                  ? "cursor-not-allowed opacity-60"
+                  : "cursor-grab focus:ring-2 focus:ring-brand-accent/40"
               ].join(" ")}
             >
               <span
                 aria-hidden="true"
-                className="mt-0.5 inline-flex w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-mono font-medium tabular-nums text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+                className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-accent-soft text-xs font-display font-semibold tabular-nums text-brand-electric"
               >
                 {index + 1}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium">{item.label}</div>
+                <div className="text-sm font-medium text-fg">{item.label}</div>
                 {item.content ? (
-                  <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-                    {item.content}
-                  </div>
+                  <div className="mt-1 text-xs text-fg-muted">{item.content}</div>
                 ) : null}
               </div>
               {onRemove ? (
@@ -200,7 +198,7 @@ export function DragRankList({
                   }}
                   disabled={disabled}
                   aria-label={`Remove ${item.label}`}
-                  className="ml-2 rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                  className="ml-2 rounded-md border border-border-strong bg-surface px-2 py-1 text-xs text-fg-muted transition hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Remove
                 </button>

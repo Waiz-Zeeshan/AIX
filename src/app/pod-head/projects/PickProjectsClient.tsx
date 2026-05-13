@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { DragRankList, type RankItem } from "@/components/DragRankList";
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { savePodHeadProjectPicks } from "@/lib/preferences-actions";
 
 export interface ProjectPoolItem {
@@ -101,7 +104,7 @@ export function PickProjectsClient({
       label: p?.title ?? id,
       content: p ? (
         <span>
-          <span className="font-medium text-zinc-700 dark:text-zinc-300">
+          <span className="font-display font-semibold text-brand-accent">
             {rankLabel(indexOf)}
           </span>
           {p.tags.length > 0 ? <> · {p.tags.slice(0, 4).join(", ")}</> : null}
@@ -114,8 +117,10 @@ export function PickProjectsClient({
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[2fr_1fr]">
       <section>
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-medium">All projects</h2>
-          <span className="text-xs text-zinc-500">{pool.length} available</span>
+          <h2 className="font-display text-base font-semibold text-fg">
+            All projects
+          </h2>
+          <span className="text-xs text-fg-muted">{pool.length} available</span>
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {pool.map((p) => {
@@ -126,48 +131,42 @@ export function PickProjectsClient({
                 key={p.id}
                 className={
                   (isPicked
-                    ? "border-emerald-400 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950 "
-                    : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 ") +
-                  "rounded-md border p-4"
+                    ? "border-brand-accent bg-brand-accent-soft "
+                    : "border-border-default bg-surface ") +
+                  "rounded-lg border p-4 transition"
                 }
               >
                 <header className="flex items-start justify-between gap-3">
-                  <h3 className="text-sm font-semibold tracking-tight">
+                  <h3 className="font-display text-sm font-semibold tracking-tight text-fg">
                     {p.title}
                   </h3>
-                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-mono text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-                    cap {p.capacity}
-                  </span>
+                  <Badge variant="neutral">cap {p.capacity}</Badge>
                 </header>
                 {p.tags.length > 0 ? (
                   <ul className="mt-2 flex flex-wrap gap-1.5">
                     {p.tags.map((t) => (
                       <li
                         key={t}
-                        className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+                        className="rounded-full bg-brand-accent-soft px-2 py-0.5 text-[11px] font-medium text-brand-electric"
                       >
                         {t}
                       </li>
                     ))}
                   </ul>
                 ) : null}
-                <p className="mt-3 line-clamp-3 text-xs text-zinc-600 dark:text-zinc-400">
+                <p className="mt-3 line-clamp-3 text-xs text-fg-muted">
                   {p.description}
                 </p>
                 <div className="mt-3 flex items-center justify-end">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => togglePick(p.id)}
                     disabled={disabled}
-                    className={
-                      (isPicked
-                        ? "border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600 "
-                        : "border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900 ") +
-                      "rounded-md border px-3 py-1 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50"
-                    }
+                    variant={isPicked ? "accent" : "secondary"}
+                    size="sm"
                   >
                     {isPicked ? "Picked" : disabled ? "Full" : "Pick"}
-                  </button>
+                  </Button>
                 </div>
               </article>
             );
@@ -177,12 +176,12 @@ export function PickProjectsClient({
 
       <section className="lg:sticky lg:top-6 lg:self-start">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-medium">
+          <h2 className="font-display text-base font-semibold text-fg">
             Your picks ({picked.length}/{requiredCount})
           </h2>
           <SaveBadge status={status} />
         </div>
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="mt-1 text-xs text-fg-muted">
           Drag to reorder. Rank 1 is your primary; rank 2 is your fallback.
         </p>
         <div className="mt-3">
@@ -194,14 +193,14 @@ export function PickProjectsClient({
           />
         </div>
         {errorMsg ? (
-          <p className="mt-3 text-xs text-red-600 dark:text-red-400">
+          <Alert variant="danger" className="mt-3 text-xs">
             {errorMsg}
-          </p>
+          </Alert>
         ) : null}
         {picked.length !== requiredCount ? (
-          <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+          <Alert variant="warning" className="mt-3 text-xs">
             Pick exactly {requiredCount} projects before submitting.
-          </p>
+          </Alert>
         ) : null}
       </section>
     </div>
@@ -210,25 +209,13 @@ export function PickProjectsClient({
 
 function SaveBadge({ status }: { status: SaveStatus }) {
   if (status === "saving") {
-    return (
-      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-        Saving…
-      </span>
-    );
+    return <Badge variant="neutral">Saving…</Badge>;
   }
   if (status === "saved") {
-    return (
-      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100">
-        Saved
-      </span>
-    );
+    return <Badge variant="success">Saved</Badge>;
   }
   if (status === "error") {
-    return (
-      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-900 dark:bg-red-900 dark:text-red-100">
-        Save failed
-      </span>
-    );
+    return <Badge variant="danger">Save failed</Badge>;
   }
   return null;
 }

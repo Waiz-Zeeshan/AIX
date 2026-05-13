@@ -409,15 +409,24 @@ describe("planAgentSync — row-level skips", () => {
     });
   });
 
-  it("skips when same Pod Head appears twice in row", () => {
+  it("flags + substitutes when same Pod Head appears twice in row", () => {
     const plan = planAgentSync({
       ...BASE,
       rows: [LIVE_HEADER, row({ 7: "Mustabeen Iqbal" })]
     });
-    expect(plan.outcomes[0]).toMatchObject({
-      kind: "skip",
-      reason: expect.stringContaining("listed twice")
-    });
+    const o = plan.outcomes[0];
+    expect(o.kind).toBe("create");
+    if (o.kind === "skip") throw new Error("unreachable");
+    expect(o.flags).toContain("DUPLICATE_POD_HEADS");
+    expect(plan.summary).toMatchObject({ creates: 1, skips: 0, duplicates: 1 });
+    // ph1 (Mustabeen) kept at rank 1; rank 2 substituted with a non-ph1 id.
+    expect(o.rankings[0]).toBe("ph1");
+    expect(o.rankings[1]).not.toBe("ph1");
+    expect(PODS.map((p) => p.podHeadProfileId)).toContain(o.rankings[1]);
+    // No duplicates remain in the final ranking list.
+    expect(new Set(o.rankings).size).toBe(o.rankings.length);
+    // topN=10, no other dropped slots → ranking length stays 10.
+    expect(o.rankings).toHaveLength(10);
   });
 
   it("skips duplicate emails within sheet", () => {
@@ -510,5 +519,99 @@ describe("planAgentSync — preserve manual edits", () => {
       ]
     });
     expect(plan.summary).toMatchObject({ creates: 0, updates: 1 });
+  });
+});
+
+describe("planAgentSync — duplicate Pod Head handling", () => {
+  function rowWithEmail(email: string, overrides: Record<number, string> = {}): string[] {
+    const r = row();
+    r[1] = email;
+    r[2] = email;
+    for (const [k, v] of Object.entries(overrides)) r[Number(k)] = v;
+    return r;
+  }
+
+  it("load-balances the substitute across multiple flagged rows at the same rank", () => {
+    // Three agents, all with Mustabeen (ph1) at both rank 1 (col 6) and rank 2 (col 7).
+    const plan = planAgentSync({
+      ...BASE,
+      rows: [
+        LIVE_HEADER,
+        rowWithEmail("agent.one@tkxel.com", { 7: "Mustabeen Iqbal" }),
+        rowWithEmail("agent.two@tkxel.com", { 7: "Mustabeen Iqbal" }),
+        rowWithEmail("agent.three@tkxel.com", { 7: "Mustabeen Iqbal" })
+      ]
+    });
+
+    expect(plan.summary).toMatchObject({ creates: 3, duplicates: 3 });
+
+    const rank2Picks = plan.outcomes.map((o) => {
+      if (o.kind === "skip") throw new Error("unreachable");
+      return o.rankings[1];
+    });
+
+    // None of the substitutes is the duplicated Pod Head.
+    for (const id of rank2Picks) expect(id).not.toBe("ph1");
+
+    // Load-balancing: count at rank-2 for any single pod head should never
+    // exceed min + 1 across the three substitutions.
+    const counts = new Map<string, number>();
+    for (const id of rank2Picks) counts.set(id, (counts.get(id) ?? 0) + 1);
+    const max = Math.max(...counts.values());
+    const min = Math.min(...counts.values());
+    expect(max - min).toBeLessThanOrEqual(1);
+  });
+
+  it("is deterministic across independent runs of the same input", () => {
+    const input = {
+      ...BASE,
+      rows: [LIVE_HEADER, row({ 7: "Mustabeen Iqbal" })]
+    };
+    const a = planAgentSync(input);
+    const b = planAgentSync(input);
+    const aOut = a.outcomes[0];
+    const bOut = b.outcomes[0];
+    if (aOut.kind === "skip" || bOut.kind === "skip") throw new Error("unreachable");
+    expect(aOut.rankings).toEqual(bOut.rankings);
+    expect(aOut.flags).toEqual(bOut.flags);
+  });
+
+  it("drops the slot but still flags when all Pod Heads are exhausted", () => {
+    // Tiny directory of 2 pod heads; topN=2; row duplicates ph1 at rank 2.
+    // Candidate set for rank 2 = {ph2}; that's fine. Add another duplicate at
+    // rank... we need a case where no candidate is left. Use topN=3, dir of 2.
+    // Wait: planAgentSync throws on "Missing priority column for rank 3" if
+    // the header doesn't have a 3rd priority. The LIVE_HEADER has up to 10
+    // priority cols. Use a minimal header.
+    const tinyHeader = [
+      "Email Address",
+      "Quick Intro",
+      "1st Priority Pod",
+      "2nd Priority Pod",
+      "3rd Priority Pod"
+    ];
+    const tinyPods: PodHeadDirEntry[] = [
+      { podHeadProfileId: "ph1", name: "Alice", email: "a@tkxel.com", empId: "1" },
+      { podHeadProfileId: "ph2", name: "Bob", email: "b@tkxel.com", empId: "2" }
+    ];
+    const tinyRow = [
+      "x@tkxel.com",
+      "Intro",
+      "Alice",
+      "Alice", // duplicate -> substitute with Bob
+      "Alice"  // duplicate again -> no candidates left, slot dropped
+    ];
+    const plan = planAgentSync({
+      topN: 3,
+      allowedEmailDomains: ["tkxel.com"],
+      podHeads: tinyPods,
+      existingAgents: [],
+      rows: [tinyHeader, tinyRow]
+    });
+    const o = plan.outcomes[0];
+    expect(o.kind).toBe("create");
+    if (o.kind === "skip") throw new Error("unreachable");
+    expect(o.flags).toContain("DUPLICATE_POD_HEADS");
+    expect(o.rankings).toEqual(["ph1", "ph2"]);
   });
 });

@@ -1,11 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
-/**
- * Tiny client component for the dashboard's straggler list. Copies a
- * comma-separated list of emails to the clipboard and flips its label briefly.
- */
 export function CopyEmailsButton({ emails }: { emails: string[] }) {
   const [copied, setCopied] = useState(false);
 
@@ -24,12 +21,8 @@ export function CopyEmailsButton({ emails }: { emails: string[] }) {
   };
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-md border border-zinc-300 px-2 py-1 text-xs font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
-    >
+    <Button type="button" onClick={onClick} variant="secondary" size="sm">
       {copied ? "Copied" : `Copy ${emails.length} emails`}
-    </button>
+    </Button>
   );
 }

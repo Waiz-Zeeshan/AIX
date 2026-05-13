@@ -1,5 +1,9 @@
 import Link from "next/link";
 
+import { AppFooter } from "@/components/chrome/AppFooter";
+import { AppHeader } from "@/components/chrome/AppHeader";
+import { PageHeader } from "@/components/chrome/PageHeader";
+import { Alert } from "@/components/ui/alert";
 import { getConfig } from "@/lib/config";
 import { db } from "@/lib/db";
 import { requireParticipant } from "@/lib/permissions";
@@ -16,18 +20,25 @@ export default async function RankOrchsPage() {
   });
   if (phase?.status !== "OPEN") {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-12">
-        <h1 className="text-2xl font-semibold tracking-tight">Rank Orchs</h1>
-        <p className="mt-4 text-sm text-zinc-500">
-          Preferences are not open right now.
-        </p>
-        <Link
-          href="/pod-head"
-          className="mt-6 inline-block text-sm text-zinc-700 underline dark:text-zinc-300"
-        >
-          ← Back to tasks
-        </Link>
-      </main>
+      <div className="min-h-screen bg-surface">
+        <AppHeader user={{ email: user.email }} />
+        <PageHeader
+          eyebrow="Pod Head"
+          title="Rank Orchs"
+          actions={
+            <Link
+              href="/pod-head"
+              className="text-sm text-white/80 underline hover:text-white"
+            >
+              ← Back to tasks
+            </Link>
+          }
+        />
+        <main className="mx-auto max-w-3xl px-6 py-10">
+          <Alert variant="warning">Preferences are not open right now.</Alert>
+        </main>
+        <AppFooter />
+      </div>
     );
   }
 
@@ -66,29 +77,29 @@ export default async function RankOrchsPage() {
   const initialRanked = existing.map((r) => r.orchId);
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Rank Orchs</h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            Drag-to-rank all {config.orchCount} Orchs. Auto-saves as you go.
-          </p>
-        </div>
-        <Link
-          href="/pod-head"
-          className="text-sm text-zinc-700 underline hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
-        >
-          ← Back to tasks
-        </Link>
-      </header>
-
-      <div className="mt-8">
+    <div className="min-h-screen bg-surface">
+      <AppHeader user={{ email: user.email }} />
+      <PageHeader
+        eyebrow="Pod Head"
+        title="Rank Orchs"
+        subtitle={`Drag-to-rank all ${config.orchCount} Orchs. Auto-saves as you go.`}
+        actions={
+          <Link
+            href="/pod-head"
+            className="text-sm text-white/80 underline hover:text-white"
+          >
+            ← Back to tasks
+          </Link>
+        }
+      />
+      <main className="mx-auto max-w-6xl px-6 py-10">
         <RankOrchsClient
           pool={pool}
           initialRanked={initialRanked}
           requiredCount={config.orchCount}
         />
-      </div>
-    </main>
+      </main>
+      <AppFooter />
+    </div>
   );
 }

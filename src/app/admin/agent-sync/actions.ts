@@ -163,9 +163,13 @@ export async function applyAgentSync(): Promise<AgentSyncState> {
             create: {
               email: outcome.email,
               name: outcome.name,
-              role: "AGENT"
+              role: "AGENT",
+              syncIssues: outcome.flags
             },
-            update: {}
+            update: {
+              // Reset every apply so stale flags clear when the sheet is fixed.
+              syncIssues: outcome.flags
+            }
           });
 
           const profile = await tx.agentProfile.upsert({
@@ -219,6 +223,7 @@ export async function applyAgentSync(): Promise<AgentSyncState> {
         created,
         updated,
         skipped,
+        duplicates: plan.summary.duplicates,
         failedRowIndexes
       } satisfies Prisma.InputJsonValue
     });

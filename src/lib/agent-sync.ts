@@ -14,6 +14,7 @@
  * at `src/app/admin/agent-sync/actions.ts`. Keep that boundary.
  */
 
+import { seededRng } from "./matching/rng";
 import {
   nameFromEmail,
   normalizeName as norm,
@@ -22,6 +23,9 @@ import {
 
 // Re-export for back-compat with code/tests that imported from this module.
 export { nameFromEmail };
+
+/** Sync-issue codes persisted on User.syncIssues. */
+export const SYNC_ISSUE_DUPLICATE_POD_HEADS = "DUPLICATE_POD_HEADS";
 
 export type RowOutcome =
   | {
@@ -33,6 +37,8 @@ export type RowOutcome =
       preferredDomains: string[];
       // Resolved Pod-Head profile IDs in rank order (rank 1 first).
       rankings: string[];
+      /** Non-fatal sync issues to persist on User.syncIssues. */
+      flags: string[];
     }
   | {
       kind: "skip";
@@ -51,6 +57,8 @@ export interface SyncPlan {
     creates: number;
     updates: number;
     skips: number;
+    /** Outcomes flagged with at least one sync issue. */
+    duplicates: number;
   };
 }
 
@@ -217,6 +225,42 @@ export function planAgentSync(input: PlanInput): SyncPlan {
   let creates = 0;
   let updates = 0;
   let skips = 0;
+  let duplicates = 0;
+
+  // For DUPLICATE_POD_HEADS substitution: when the same Pod Head appears
+  // twice in one row we keep the earliest occurrence and substitute the
+  // later slot with a Pod Head not yet used in this row, picked to balance
+  // load at that rank position. Counts are built up across rows in this run.
+  const allPodHeadIds = podHeads
+    .map((ph) => ph.podHeadProfileId)
+    .sort();
+  /** rank K (0-indexed) -> Map<podHeadProfileId, count assigned at rank K> */
+  const rankCounts = new Map<number, Map<string, number>>();
+  const bumpRankCount = (k: number, id: string) => {
+    const bucket = rankCounts.get(k) ?? new Map<string, number>();
+    bucket.set(id, (bucket.get(id) ?? 0) + 1);
+    rankCounts.set(k, bucket);
+  };
+  const pickSubstitute = (
+    k: number,
+    excluded: Set<string>,
+    email: string
+  ): string | null => {
+    const candidates = allPodHeadIds.filter((id) => !excluded.has(id));
+    if (candidates.length === 0) return null;
+    const counts = rankCounts.get(k);
+    let minCount = Infinity;
+    for (const id of candidates) {
+      const c = counts?.get(id) ?? 0;
+      if (c < minCount) minCount = c;
+    }
+    const minSet = candidates.filter(
+      (id) => (counts?.get(id) ?? 0) === minCount
+    );
+    if (minSet.length === 1) return minSet[0];
+    const rng = seededRng(`agent-sync-dup-${email}-${k}`);
+    return minSet[Math.floor(rng() * minSet.length)];
+  };
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
@@ -305,6 +349,7 @@ export function planAgentSync(input: PlanInput): SyncPlan {
     // Try EMP-ID match first (canonical, tolerant of name typos); fall back to name match.
     const rankings: string[] = [];
     const seenPodHeadsInRow = new Set<string>();
+    const flags = new Set<string>();
     let rowError: string | null = null;
     for (let k = 0; k < topN; k++) {
       const cell = priorityCells[k];
@@ -332,12 +377,21 @@ export function planAgentSync(input: PlanInput): SyncPlan {
         match = candidates[0];
       }
 
+      let assignedId: string;
       if (seenPodHeadsInRow.has(match.podHeadProfileId)) {
-        rowError = `priority ${k + 1}: Pod Head "${cell}" listed twice in the same row`;
-        break;
+        flags.add(SYNC_ISSUE_DUPLICATE_POD_HEADS);
+        const sub = pickSubstitute(k, seenPodHeadsInRow, chosenEmail);
+        if (sub === null) {
+          // Every known Pod Head already used in this row. Drop the slot.
+          continue;
+        }
+        assignedId = sub;
+      } else {
+        assignedId = match.podHeadProfileId;
       }
-      seenPodHeadsInRow.add(match.podHeadProfileId);
-      rankings.push(match.podHeadProfileId);
+      seenPodHeadsInRow.add(assignedId);
+      rankings.push(assignedId);
+      bumpRankCount(k, assignedId);
     }
     if (rowError) {
       reject(rowError);
@@ -358,6 +412,8 @@ export function planAgentSync(input: PlanInput): SyncPlan {
     const kind: "create" | "update" = existing ? "update" : "create";
     if (kind === "create") creates++;
     else updates++;
+    const flagList = Array.from(flags).sort();
+    if (flagList.length > 0) duplicates++;
 
     outcomes.push({
       kind,
@@ -366,7 +422,8 @@ export function planAgentSync(input: PlanInput): SyncPlan {
       name: nameFromEmail(chosenEmail),
       pitch: rawPitch,
       preferredDomains,
-      rankings
+      rankings,
+      flags: flagList
     });
   }
 
@@ -378,7 +435,8 @@ export function planAgentSync(input: PlanInput): SyncPlan {
       rowsTotal: rows.length - 1,
       creates,
       updates,
-      skips
+      skips,
+      duplicates
     }
   };
 }

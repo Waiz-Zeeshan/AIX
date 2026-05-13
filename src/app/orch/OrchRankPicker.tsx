@@ -20,6 +20,10 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { DragRankList, type RankItem } from "@/components/DragRankList";
 import { PitchCard } from "@/components/PitchCard";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   markPreferencesSubmitted,
   saveOrchPodHeadSelections
@@ -182,46 +186,45 @@ export function OrchRankPicker({
   };
 
   return (
-    <div className="mt-8 space-y-6">
-      <div className="rounded-md border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-zinc-700 dark:text-zinc-300">
+    <div className="space-y-6">
+      <Card variant="muted" padding="md">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+          <p className="text-fg">
             Pick <strong>{targetCount}</strong> Pod Heads and rank them top to
-            bottom. You can drag, use the keyboard, or remove items to
-            re-rank.
+            bottom. You can drag, use the keyboard, or remove items to re-rank.
           </p>
           <SaveIndicator state={saveState} />
         </div>
-      </div>
+      </Card>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_22rem]">
         <section aria-labelledby="pool-heading">
           <div className="flex items-baseline justify-between">
-            <h2 id="pool-heading" className="text-lg font-medium">
+            <h2 id="pool-heading" className="font-display text-lg font-semibold text-fg">
               Pod Heads
             </h2>
-            <span className="text-xs text-zinc-500">
+            <span className="text-xs text-fg-muted">
               {filteredPool.length} available
             </span>
           </div>
 
-          <input
+          <Input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by name, skill, or pitch…"
-            className="mt-3 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            className="mt-3"
           />
 
           {atCapacity ? (
-            <p className="mt-3 text-xs text-amber-700 dark:text-amber-400">
+            <Alert variant="warning" className="mt-3 text-xs">
               You&apos;ve selected {targetCount} Pod Heads — the maximum.
               Remove someone on the right to add a different person.
-            </p>
+            </Alert>
           ) : null}
 
           {filteredPool.length === 0 ? (
-            <p className="mt-6 text-sm text-zinc-500">
+            <p className="mt-6 text-sm text-fg-muted">
               No Pod Heads match your search.
             </p>
           ) : (
@@ -236,7 +239,7 @@ export function OrchRankPicker({
                     skills={ph.skills}
                     pitch={ph.pitch}
                     action={
-                      <button
+                      <Button
                         type="button"
                         onClick={() => handleAdd(ph.id)}
                         disabled={atCapacity}
@@ -246,10 +249,11 @@ export function OrchRankPicker({
                             ? `You already have ${targetCount} selected. Remove one to add another.`
                             : `Add ${ph.name}`
                         }
-                        className="rounded-md border border-zinc-300 px-3 py-1 text-xs font-medium hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
+                        variant="accent"
+                        size="sm"
                       >
                         Add
-                      </button>
+                      </Button>
                     }
                   />
                 </li>
@@ -260,10 +264,10 @@ export function OrchRankPicker({
 
         <aside aria-labelledby="ranked-heading" className="lg:sticky lg:top-6 lg:self-start">
           <div className="flex items-baseline justify-between">
-            <h2 id="ranked-heading" className="text-lg font-medium">
+            <h2 id="ranked-heading" className="font-display text-lg font-semibold text-fg">
               Your ranking
             </h2>
-            <span className="text-xs text-zinc-500" aria-live="polite">
+            <span className="font-display text-xs font-semibold tabular-nums text-brand-accent" aria-live="polite">
               {selectedIds.length} / {targetCount}
             </span>
           </div>
@@ -278,43 +282,44 @@ export function OrchRankPicker({
           </div>
 
           <div className="mt-6 space-y-3">
-            <button
+            <Button
               type="button"
               onClick={handleSubmit}
               disabled={!canSubmit}
-              className="w-full rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-zinc-900"
+              variant="accent"
+              size="lg"
+              className="w-full"
             >
               {isSubmitting
                 ? "Submitting…"
                 : submittedAt
                   ? "Resubmit preferences"
                   : "Submit preferences"}
-            </button>
+            </Button>
 
             {selectedIds.length !== targetCount ? (
-              <p className="text-xs text-zinc-500">
-                Pick {targetCount - selectedIds.length} more to enable
-                submit.
+              <p className="text-xs text-fg-muted">
+                Pick {targetCount - selectedIds.length} more to enable submit.
               </p>
             ) : null}
 
             {submittedAt ? (
-              <p className="text-xs text-emerald-700 dark:text-emerald-400">
+              <Alert variant="success" className="text-xs">
                 Submitted {new Date(submittedAt).toLocaleString()}. You can
                 still edit and resubmit while preferences are open.
-              </p>
+              </Alert>
             ) : null}
 
             {missing.length > 0 ? (
-              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+              <Alert variant="warning" className="text-xs">
                 Still missing: {missing.join(", ")}.
-              </div>
+              </Alert>
             ) : null}
 
             {submitError ? (
-              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+              <Alert variant="danger" className="text-xs">
                 {submitError}
-              </div>
+              </Alert>
             ) : null}
           </div>
         </aside>
@@ -325,24 +330,20 @@ export function OrchRankPicker({
 
 function SaveIndicator({ state }: { state: SaveState }) {
   if (state.kind === "idle") {
-    return <span className="text-xs text-zinc-500">Changes auto-save.</span>;
+    return <span className="text-xs text-fg-muted">Changes auto-save.</span>;
   }
   if (state.kind === "saving") {
-    return (
-      <span className="text-xs text-zinc-600 dark:text-zinc-300">
-        Saving…
-      </span>
-    );
+    return <span className="text-xs text-fg-muted">Saving…</span>;
   }
   if (state.kind === "saved") {
     return (
-      <span className="text-xs text-emerald-700 dark:text-emerald-400">
+      <span className="text-xs font-medium text-emerald-700">
         Saved {new Date(state.at).toLocaleTimeString()}
       </span>
     );
   }
   return (
-    <span className="text-xs text-red-700 dark:text-red-400">
+    <span className="text-xs font-medium text-red-700">
       Save failed: {state.message}
     </span>
   );

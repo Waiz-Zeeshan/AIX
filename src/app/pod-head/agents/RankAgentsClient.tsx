@@ -4,6 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { DragRankList, type RankItem } from "@/components/DragRankList";
 import { PitchCard } from "@/components/PitchCard";
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { savePodHeadAgentSelections } from "@/lib/preferences-actions";
 
 export interface AgentPoolItem {
@@ -160,32 +164,33 @@ export function RankAgentsClient({
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[2fr_1fr]">
       <section>
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-medium">Agent pool</h2>
-          <span className="text-xs text-zinc-500">
+          <h2 className="font-display text-base font-semibold text-fg">
+            Agent pool
+          </h2>
+          <span className="text-xs text-fg-muted">
             {filtered.length} of {pool.length - ranked.length} available
           </span>
         </div>
 
         <div className="mt-3 space-y-3">
-          <input
+          <Input
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name, skill, or pitch text…"
-            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
 
           {allSkills.length > 0 ? (
-            <details className="rounded-md border border-zinc-200 dark:border-zinc-800">
-              <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+            <details className="rounded-md border border-border-default">
+              <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-fg">
                 Filter by skill{" "}
                 {selectedSkills.length > 0 ? (
-                  <span className="ml-1 rounded-full bg-zinc-900 px-1.5 py-0.5 text-[10px] font-mono text-white dark:bg-white dark:text-zinc-900">
+                  <span className="ml-1 rounded-full bg-brand-accent px-1.5 py-0.5 text-[10px] font-display font-semibold text-white">
                     {selectedSkills.length}
                   </span>
                 ) : null}
               </summary>
-              <div className="border-t border-zinc-200 px-3 py-2 dark:border-zinc-800">
+              <div className="border-t border-border-default px-3 py-2">
                 <div className="flex flex-wrap gap-1.5">
                   {allSkills.map((s) => {
                     const active = selectedSkills.includes(s);
@@ -196,9 +201,9 @@ export function RankAgentsClient({
                         onClick={() => toggleSkill(s)}
                         className={
                           (active
-                            ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 "
-                            : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 ") +
-                          "rounded-full px-2 py-0.5 text-xs"
+                            ? "bg-brand-accent text-white "
+                            : "bg-surface-alt text-fg hover:bg-brand-accent-soft hover:text-brand-electric ") +
+                          "rounded-full px-2 py-0.5 text-xs transition"
                         }
                       >
                         {s}
@@ -210,7 +215,7 @@ export function RankAgentsClient({
                   <button
                     type="button"
                     onClick={() => setSelectedSkills([])}
-                    className="mt-2 text-xs text-zinc-600 underline dark:text-zinc-400"
+                    className="mt-2 text-xs text-brand-accent underline"
                   >
                     Clear skill filters
                   </button>
@@ -222,7 +227,7 @@ export function RankAgentsClient({
 
         <div className="mt-4 space-y-3">
           {visible.length === 0 ? (
-            <p className="rounded-md border border-dashed border-zinc-300 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
+            <p className="rounded-md border border-dashed border-border-strong bg-surface-muted px-4 py-8 text-center text-sm text-fg-muted">
               No Agents match your filters.
             </p>
           ) : (
@@ -236,38 +241,41 @@ export function RankAgentsClient({
                 skills={a.skills}
                 pitch={a.pitch}
                 action={
-                  <button
+                  <Button
                     type="button"
                     onClick={() => addToRanking(a.id)}
                     disabled={atCapacity}
-                    className="rounded-md border border-zinc-300 px-3 py-1 text-xs font-medium hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
+                    variant="accent"
+                    size="sm"
                   >
                     {atCapacity ? "Full" : "Add"}
-                  </button>
+                  </Button>
                 }
               />
             ))
           )}
           {hasMore ? (
-            <button
+            <Button
               type="button"
               onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-xs font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
+              variant="secondary"
+              size="sm"
+              className="w-full"
             >
               Show {Math.min(PAGE_SIZE, filtered.length - visibleCount)} more
-            </button>
+            </Button>
           ) : null}
         </div>
       </section>
 
       <section className="lg:sticky lg:top-6 lg:self-start">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-medium">
+          <h2 className="font-display text-base font-semibold text-fg">
             Your top {requiredCount} ({ranked.length}/{requiredCount})
           </h2>
           <SaveBadge status={status} />
         </div>
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="mt-1 text-xs text-fg-muted">
           Drag to reorder, or use Space/Enter + Arrow keys.
         </p>
         <div className="mt-3">
@@ -279,14 +287,14 @@ export function RankAgentsClient({
           />
         </div>
         {errorMsg ? (
-          <p className="mt-3 text-xs text-red-600 dark:text-red-400">
+          <Alert variant="danger" className="mt-3 text-xs">
             {errorMsg}
-          </p>
+          </Alert>
         ) : null}
         {ranked.length !== requiredCount ? (
-          <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+          <Alert variant="warning" className="mt-3 text-xs">
             Select exactly {requiredCount} Agents before submitting.
-          </p>
+          </Alert>
         ) : null}
       </section>
     </div>
@@ -295,25 +303,13 @@ export function RankAgentsClient({
 
 function SaveBadge({ status }: { status: SaveStatus }) {
   if (status === "saving") {
-    return (
-      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-        Saving…
-      </span>
-    );
+    return <Badge variant="neutral">Saving…</Badge>;
   }
   if (status === "saved") {
-    return (
-      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100">
-        Saved
-      </span>
-    );
+    return <Badge variant="success">Saved</Badge>;
   }
   if (status === "error") {
-    return (
-      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-900 dark:bg-red-900 dark:text-red-100">
-        Save failed
-      </span>
-    );
+    return <Badge variant="danger">Save failed</Badge>;
   }
   return null;
 }

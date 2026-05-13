@@ -1,3 +1,5 @@
+import { PageHeader } from "@/components/chrome/PageHeader";
+import { Alert } from "@/components/ui/alert";
 import { getConfig } from "@/lib/config";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/permissions";
@@ -18,43 +20,42 @@ export default async function AdminConfigPage() {
   const currentStatus = registration?.status ?? "MISSING";
 
   return (
-    <main className="px-6 py-10">
-      <h1 className="text-3xl font-semibold tracking-tight">
-        Event configuration
-      </h1>
-      <p className="mt-2 text-sm text-zinc-500">
-        Tunes counts, capacities, list sizes, pitch limits, and the auth domain
-        allowlist. Editable during REGISTRATION only.
-      </p>
-
-      {locked && (
-        <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-          REGISTRATION is{" "}
-          <span className="font-mono font-medium">{currentStatus}</span>. The
-          configuration is locked. Re-open REGISTRATION on the Phases page to
-          edit.
-        </div>
-      )}
-
-      <ConfigForm
-        defaults={{
-          orchCount: config.orchCount,
-          podHeadCount: config.podHeadCount,
-          projectCount: config.projectCount,
-          podHeadsPerOrch: config.podHeadsPerOrch,
-          agentsPerPodHead: config.agentsPerPodHead,
-          projectsPerPodHead: config.projectsPerPodHead,
-          defaultProjectCapacity: config.defaultProjectCapacity,
-          agentRanksTopNPodHeads: config.agentRanksTopNPodHeads,
-          podHeadRanksTopNAgents: config.podHeadRanksTopNAgents,
-          pitchMinChars: config.pitchMinChars,
-          pitchMaxChars: config.pitchMaxChars,
-          allowedEmailDomains: config.allowedEmailDomains,
-          agentSyncSheetId: config.agentSyncSheetId ?? "",
-          podHeadSyncSheetId: config.podHeadSyncSheetId ?? ""
-        }}
-        locked={locked}
+    <>
+      <PageHeader
+        eyebrow="Admin"
+        title="Event configuration"
+        subtitle="Tunes counts, capacities, list sizes, pitch limits, and the auth domain allowlist. Editable during REGISTRATION only."
       />
-    </main>
+      <main className="mx-auto max-w-5xl px-6 py-10">
+        {locked && (
+          <Alert variant="warning" className="mb-6">
+            REGISTRATION is{" "}
+            <span className="font-mono font-medium">{currentStatus}</span>. The
+            configuration is locked. Re-open REGISTRATION on the Phases page to
+            edit.
+          </Alert>
+        )}
+
+        <ConfigForm
+          defaults={{
+            orchCount: config.orchCount,
+            podHeadCount: config.podHeadCount,
+            projectCount: config.projectCount,
+            podHeadsPerOrch: config.podHeadsPerOrch,
+            agentsPerPodHead: config.agentsPerPodHead,
+            projectsPerPodHead: config.projectsPerPodHead,
+            defaultProjectCapacity: config.defaultProjectCapacity,
+            agentRanksTopNPodHeads: config.agentRanksTopNPodHeads,
+            podHeadRanksTopNAgents: config.podHeadRanksTopNAgents,
+            pitchMinChars: config.pitchMinChars,
+            pitchMaxChars: config.pitchMaxChars,
+            allowedEmailDomains: config.allowedEmailDomains,
+            agentSyncSheetId: config.agentSyncSheetId ?? "",
+            podHeadSyncSheetId: config.podHeadSyncSheetId ?? ""
+          }}
+          locked={locked}
+        />
+      </main>
+    </>
   );
 }

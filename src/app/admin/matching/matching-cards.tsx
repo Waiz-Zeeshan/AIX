@@ -4,6 +4,9 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import type { MatchType } from "@prisma/client";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   finalize,
   rollback,
@@ -68,15 +71,15 @@ export function MatchingCards({
   const podHeadAgentFinalized = status.PODHEAD_AGENT.isFinalized;
 
   return (
-    <div className="mt-8 space-y-6">
+    <div className="space-y-6">
       {STEPS.map((step) => {
         const stepStatus = status[step.type];
         const prereqMet =
           step.type === "ORCH_PODHEAD"
             ? true
             : step.type === "PODHEAD_AGENT"
-            ? orchFinalized
-            : podHeadAgentFinalized;
+              ? orchFinalized
+              : podHeadAgentFinalized;
         return (
           <StepCard
             key={step.type}
@@ -109,13 +112,13 @@ function StepCard({
   const interactiveDisabled = !phaseOpen || !prereqMet;
 
   return (
-    <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
+    <Card padding="lg">
       <header className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">
-            <span className="text-zinc-400">{step.index}.</span> {step.title}
+          <h2 className="font-display text-lg font-semibold tracking-tight text-fg">
+            <span className="text-fg-subtle">{step.index}.</span> {step.title}
           </h2>
-          <p className="mt-1 text-sm text-zinc-500">{step.description}</p>
+          <p className="mt-1 text-sm text-fg-muted">{step.description}</p>
         </div>
         <StateBadge
           isFinalized={isFinalized}
@@ -125,7 +128,7 @@ function StepCard({
       </header>
 
       {!prereqMet && (
-        <p className="mt-4 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+        <p className="mt-4 rounded-md border border-border-default bg-surface-muted px-3 py-2 text-xs text-fg-muted">
           Finalize step {step.index - 1} before running this step.
         </p>
       )}
@@ -147,7 +150,7 @@ function StepCard({
       {stepStatus.stats && (
         <StatsPanel type={step.type} stats={stepStatus.stats} />
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -160,32 +163,10 @@ function StateBadge({
   hasDraft: boolean;
   prereqMet: boolean;
 }) {
-  if (isFinalized) {
-    return (
-      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100">
-        Finalized
-      </span>
-    );
-  }
-  if (hasDraft) {
-    return (
-      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-900 dark:text-amber-100">
-        Draft
-      </span>
-    );
-  }
-  if (!prereqMet) {
-    return (
-      <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-        Locked
-      </span>
-    );
-  }
-  return (
-    <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-      Not started
-    </span>
-  );
+  if (isFinalized) return <Badge variant="success">Finalized</Badge>;
+  if (hasDraft) return <Badge variant="warning">Draft</Badge>;
+  if (!prereqMet) return <Badge variant="neutral">Locked</Badge>;
+  return <Badge variant="neutral">Not started</Badge>;
 }
 
 function RunButton({
@@ -211,22 +192,12 @@ function RunButton({
   );
 }
 
-function RunSubmit({
-  label,
-  disabled
-}: {
-  label: string;
-  disabled: boolean;
-}) {
+function RunSubmit({ label, disabled }: { label: string; disabled: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={disabled || pending}
-      className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300 dark:disabled:bg-zinc-800 dark:disabled:text-zinc-600"
-    >
+    <Button type="submit" disabled={disabled || pending} variant="accent" size="sm">
       {pending ? "Running…" : label}
-    </button>
+    </Button>
   );
 }
 
@@ -263,13 +234,15 @@ function FinalizeButton({
 function FinalizeSubmit({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <button
+    <Button
       type="submit"
       disabled={disabled || pending}
-      className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-900 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100 dark:hover:bg-emerald-900"
+      variant="secondary"
+      size="sm"
+      className="border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
     >
       {pending ? "Finalizing…" : "Finalize"}
-    </button>
+    </Button>
   );
 }
 
@@ -285,8 +258,8 @@ function RollbackButton({
     type === "PROJECT_ASSIGNMENT"
       ? "Rolling back PROJECT_ASSIGNMENT will null all project assignments. Continue?"
       : type === "ORCH_PODHEAD"
-      ? "Rolling back ORCH_PODHEAD will null all Pod Head → Orch assignments. Continue?"
-      : "Rolling back PODHEAD_AGENT will null all Agent → Pod Head assignments. Continue?";
+        ? "Rolling back ORCH_PODHEAD will null all Pod Head → Orch assignments. Continue?"
+        : "Rolling back PODHEAD_AGENT will null all Agent → Pod Head assignments. Continue?";
 
   return (
     <div className="flex flex-col gap-1">
@@ -309,13 +282,14 @@ function RollbackButton({
 function RollbackSubmit({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <button
+    <Button
       type="submit"
       disabled={disabled || pending}
-      className="rounded-md border border-rose-300 bg-rose-50 px-3 py-1.5 text-sm font-medium text-rose-900 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-100 dark:hover:bg-rose-900"
+      variant="danger"
+      size="sm"
     >
       {pending ? "Rolling back…" : "Rollback"}
-    </button>
+    </Button>
   );
 }
 
@@ -323,18 +297,12 @@ function ActionMessage({ state }: { state: MatchingActionState }) {
   if (state.status === "idle" || !state.message) return null;
   const cls =
     state.status === "success"
-      ? "text-emerald-700 dark:text-emerald-400"
-      : "text-rose-700 dark:text-rose-400";
+      ? "font-medium text-emerald-700"
+      : "font-medium text-red-700";
   return <p className={`text-xs ${cls}`}>{state.message}</p>;
 }
 
-function StatsPanel({
-  type,
-  stats
-}: {
-  type: MatchType;
-  stats: StepStats;
-}) {
+function StatsPanel({ type, stats }: { type: MatchType; stats: StepStats }) {
   if (!stats) return null;
   const sizes = Object.values(stats.rosterSizes ?? {});
   let min = 0;
@@ -359,38 +327,38 @@ function StatsPanel({
   items.push({ label: "Duration", value: `${stats.durationMs} ms` });
 
   return (
-    <div className="mt-5 rounded-md border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
-      <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+    <div className="mt-5 rounded-md border border-border-default bg-surface-muted p-4">
+      <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-fg-muted">
         Run summary
       </h3>
       <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3 lg:grid-cols-5">
         {items.map((it) => (
           <div key={it.label}>
-            <dt className="text-xs text-zinc-500">{it.label}</dt>
-            <dd className="font-mono font-medium">{it.value}</dd>
+            <dt className="text-xs text-fg-muted">{it.label}</dt>
+            <dd className="font-mono font-medium text-fg">{it.value}</dd>
           </div>
         ))}
       </dl>
 
       {sizes.length > 0 && (
         <div className="mt-4">
-          <h4 className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+          <h4 className="font-display text-xs font-semibold uppercase tracking-wider text-fg-muted">
             {type === "PROJECT_ASSIGNMENT"
               ? "Project load distribution"
               : "Roster sizes"}
           </h4>
           <dl className="mt-2 grid grid-cols-3 gap-x-6 gap-y-2 text-sm">
             <div>
-              <dt className="text-xs text-zinc-500">Min</dt>
-              <dd className="font-mono font-medium">{min}</dd>
+              <dt className="text-xs text-fg-muted">Min</dt>
+              <dd className="font-mono font-medium text-fg">{min}</dd>
             </div>
             <div>
-              <dt className="text-xs text-zinc-500">Max</dt>
-              <dd className="font-mono font-medium">{max}</dd>
+              <dt className="text-xs text-fg-muted">Max</dt>
+              <dd className="font-mono font-medium text-fg">{max}</dd>
             </div>
             <div>
-              <dt className="text-xs text-zinc-500">Avg</dt>
-              <dd className="font-mono font-medium">{avg.toFixed(2)}</dd>
+              <dt className="text-xs text-fg-muted">Avg</dt>
+              <dd className="font-mono font-medium text-fg">{avg.toFixed(2)}</dd>
             </div>
           </dl>
         </div>
