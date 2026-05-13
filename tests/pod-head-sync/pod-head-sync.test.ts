@@ -117,6 +117,59 @@ describe("splitNameAndEmpId", () => {
       empId: "42"
     });
   });
+
+  it("accepts trailing junk after the empId (no end anchor)", () => {
+    expect(splitNameAndEmpId("Hafiz - 1676 (Engineering)")).toEqual({
+      name: "Hafiz",
+      empId: "1676"
+    });
+    expect(splitNameAndEmpId("Hafiz - 1676 / TKXEL Pakistan")).toEqual({
+      name: "Hafiz",
+      empId: "1676"
+    });
+    expect(splitNameAndEmpId("Hafiz - 1676 Senior Engineer")).toEqual({
+      name: "Hafiz",
+      empId: "1676"
+    });
+    expect(splitNameAndEmpId("Hafiz - 1676   ")).toEqual({
+      name: "Hafiz",
+      empId: "1676"
+    });
+  });
+
+  it("accepts non-digit filler between dash and digits", () => {
+    // Operator wrote "EMP" prefix between dash and the number.
+    expect(splitNameAndEmpId("Hafiz - EMP 1676")).toEqual({
+      name: "Hafiz",
+      empId: "1676"
+    });
+    expect(splitNameAndEmpId("Hafiz - ID:1676")).toEqual({
+      name: "Hafiz",
+      empId: "1676"
+    });
+  });
+
+  it("internal-dash name with empId: name preserved, empId extracted", () => {
+    // Greedy first group means "Smith-Jones - 1234" parses as Smith-Jones / 1234,
+    // not Smith / 1234. The last dash-followed-by-digits wins.
+    expect(splitNameAndEmpId("Smith-Jones - 1234")).toEqual({
+      name: "Smith-Jones",
+      empId: "1234"
+    });
+    expect(splitNameAndEmpId("Smith-Jones-1234")).toEqual({
+      name: "Smith-Jones",
+      empId: "1234"
+    });
+  });
+
+  it("digits inside the name are not mistaken for empId when no trailing dash-digits exist", () => {
+    // No dash followed by digits → null empId. The "5" inside "Section 5" stays
+    // part of the name.
+    expect(splitNameAndEmpId("Section 5 Squad")).toEqual({
+      name: "Section 5 Squad",
+      empId: null
+    });
+  });
 });
 
 describe("planPodHeadSync — header detection", () => {
